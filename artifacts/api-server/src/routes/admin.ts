@@ -128,6 +128,8 @@ router.post("/admin/logout", (req: Request, res: Response) => {
 router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const tokens = listUserTokens();
   const accounts = listAiAccounts();
+  const geminiOk = req.query["geminiOk"] as string | undefined;
+  const geminiErr = req.query["geminiErr"] as string | undefined;
   const created = req.query["created"] as string | undefined;
   const deleted = req.query["deleted"] as string | undefined;
   const accCreated = req.query["accCreated"] as string | undefined;
@@ -167,6 +169,8 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
     : accounts.map(a => `<option value="${a.id}">${a.name} (${a.model})</option>`).join("");
 
   const alerts = [
+    geminiOk ? `<div class="alert-ok">&#x2713; Da ket noi Gemini thanh cong! Model: ${botState.aiModel}</div>` : "",
+    geminiErr ? `<div class="alert-err">&#x26A0; Loi ket noi Gemini: ${decodeURIComponent(geminiErr)}</div>` : "",
     created ? `<div class="alert-ok">Da tao link.</div>` : "",
     deleted ? `<div class="alert-err">Da xoa link.</div>` : "",
     accCreated ? `<div class="alert-ok">Da them tai khoan AI.</div>` : "",
@@ -187,8 +191,10 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         <div class="stat-box"><div class="stat-label">9Router URL</div><div class="stat-val" style="font-size:.7rem;font-family:monospace;padding-top:.35rem">${botState.aiBaseUrl || "chua cau hinh"}</div></div>
       </div>
       <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <a href="/" class="btn btn-ghost">Dashboard React</a>
+        <a href="/" class="btn btn-ghost">Dashboard</a>
         <a href="/ai-config" class="btn btn-ghost">AI Config</a>
+        <a href="/connect/gemini" class="btn btn-primary" style="background:linear-gradient(135deg,#4285f4,#34a853)">&#x1F1EC;&#x1F1F4; Ket noi Gemini</a>
+        <a href="/connect/9router" class="btn btn-ghost">9Router</a>
       </div>
       ${alerts}
       <div class="sep"></div>

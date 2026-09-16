@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WolfMod Bot - AI Facebook Messenger</title>
+  <meta name="description" content="Bot tu dong tra loi Facebook Messenger bang AI. Ket noi Gemini, Claude, GPT. De cai dat, manh me, tuc thi." />
+  <style>
+    :root{
+      --bg:#08090d;--card:#0e1018;--border:#1e2136;--accent:#6366f1;
+      --accent2:#8b5cf6;--text:#e2e8f0;--muted:#64748b;--green:#22c55e;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(16px);background:rgba(8,9,13,.8);border-bottom:1px solid var(--border);padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between}
+    .nav-logo{display:flex;align-items:center;gap:.6rem;font-weight:800;font-size:1.05rem;color:#fff;text-decoration:none}
+    .nav-logo span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-links{display:flex;align-items:center;gap:1.5rem}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .15s}
+    .nav-links a:hover{color:var(--text)}
+    .nav-btn{background:var(--accent);color:#fff!important;padding:.45rem 1.1rem;border-radius:8px;font-weight:600;font-size:.85rem!important}
+    .nav-btn:hover{opacity:.85}
+    /* HERO */
+    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6rem 2rem 4rem;position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 20%,rgba(99,102,241,.15),transparent);pointer-events:none}
+    .hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:99px;padding:.35rem 1rem;font-size:.78rem;color:#818cf8;margin-bottom:1.5rem;font-weight:500}
+    .hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#22c55e;animation:blink 2s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    h1{font-size:clamp(2.4rem,6vw,4.2rem);font-weight:900;line-height:1.1;margin-bottom:1.25rem;letter-spacing:-.03em}
+    h1 .grad{background:linear-gradient(135deg,#fff 30%,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero-sub{font-size:clamp(1rem,2.5vw,1.2rem);color:var(--muted);max-width:540px;margin:0 auto 2.5rem}
+    .hero-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.75rem;border-radius:10px;font-weight:700;font-size:.95rem;cursor:pointer;text-decoration:none;transition:all .15s;border:none}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 24px rgba(99,102,241,.35)}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(99,102,241,.45)}
+    .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+    /* PROVIDERS */
+    .providers{display:flex;align-items:center;gap:.6rem;margin-top:3.5rem;flex-wrap:wrap;justify-content:center}
+    .providers-label{font-size:.78rem;color:var(--muted)}
+    .provider-chip{display:flex;align-items:center;gap:.4rem;background:var(--card);border:1px solid var(--border);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;color:var(--muted)}
+    .provider-chip img,.provider-chip .pi{width:16px;height:16px;border-radius:3px}
+    /* STATS */
+    .stats{display:flex;gap:3rem;flex-wrap:wrap;justify-content:center;padding:2rem 0 4rem}
+    .stat-item{text-align:center}
+    .stat-num{font-size:2rem;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-desc{font-size:.78rem;color:var(--muted);margin-top:.2rem}
+    /* SECTION */
+    section{padding:5rem 2rem;max-width:1100px;margin:0 auto}
+    .section-label{font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:.75rem}
+    .section-title{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:800;margin-bottom:1rem;line-height:1.2}
+    .section-sub{color:var(--muted);max-width:520px;margin-bottom:3rem;font-size:.95rem}
+    /* FEATURES GRID */
+    .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1.25rem}
+    .feature-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;transition:border-color .2s,transform .2s}
+    .feature-card:hover{border-color:rgba(99,102,241,.5);transform:translateY(-3px)}
+    .feature-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:1rem}
+    .feature-card h3{font-size:1rem;font-weight:700;margin-bottom:.5rem}
+    .feature-card p{font-size:.85rem;color:var(--muted);line-height:1.6}
+    /* FLOW */
+    .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;counter-reset:step}
+    .flow-step{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;position:relative}
+    .flow-step::before{counter-increment:step;content:counter(step);position:absolute;top:1.25rem;right:1.25rem;width:26px;height:26px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--accent)}
+    .flow-step h3{font-size:.95rem;font-weight:700;margin-bottom:.4rem}
+    .flow-step p{font-size:.82rem;color:var(--muted)}
+    /* AI PROVIDERS SECTION */
+    .providers-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
+    .provider-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;display:flex;align-items:center;gap:.9rem;transition:border-color .2s}
+    .provider-card:hover{border-color:rgba(99,102,241,.4)}
+    .provider-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+    .provider-card h4{font-size:.9rem;font-weight:700}
+    .provider-card p{font-size:.75rem;color:var(--muted)}
+    .badge-soon{display:inline-block;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.3);color:#fbbf24;border-radius:4px;font-size:.65rem;font-weight:600;padding:.1rem .4rem;margin-left:.4rem}
+    /* CTA BOTTOM */
+    .cta-section{text-align:center;padding:5rem 2rem;background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.08));border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+    /* FOOTER */
+    footer{text-align:center;padding:2rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border)}
+    footer a{color:var(--muted);text-decoration:none}
+    footer a:hover{color:var(--text)}
+    @media(max-width:600px){.nav-links .hide-mobile{display:none}}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <span>&#x26A1;</span> WolfMod Bot
+  </a>
+  <div class="nav-links">
+    <a href="#tinh-nang" class="hide-mobile">Tinh nang</a>
+    <a href="#huong-dan" class="hide-mobile">Huong dan</a>
+    <a href="/admin" class="nav-btn">Admin Panel</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">&#x1F916; Bot AI cho Facebook Messenger</div>
+  <h1><span class="grad">Tu dong tra loi<br />thong minh</span><br />bang AI</h1>
+  <p class="hero-sub">Ket noi Gemini, Claude, GPT vao Facebook Messenger. Bot tu dong phan tich va tra loi tin nhan 24/7, khong can code.</p>
+  <div class="hero-cta">
+    <a href="/admin" class="btn btn-primary">&#x2794; Vao Admin Panel</a>
+    <a href="#huong-dan" class="btn btn-outline">Xem huong dan</a>
+  </div>
+  <div class="providers">
+    <span class="providers-label">Ho tro:</span>
+    <span class="provider-chip">&#x1F1EC;&#x1F1F4; Gemini</span>
+    <span class="provider-chip">&#x1F9E0; Claude</span>
+    <span class="provider-chip">&#x2728; GPT-4o</span>
+    <span class="provider-chip">&#x1F300; 9Router</span>
+  </div>
+  <div class="stats">
+    <div class="stat-item"><div class="stat-num">24/7</div><div class="stat-desc">Hoat dong lien tuc</div></div>
+    <div class="stat-item"><div class="stat-num">&lt;1s</div><div class="stat-desc">Thoi gian phan hoi</div></div>
+    <div class="stat-item"><div class="stat-num">1-click</div><div class="stat-desc">Ket noi AI</div></div>
+  </div>
+</section>
+
+<section id="tinh-nang">
+  <div class="section-label">Tinh nang</div>
+  <h2 class="section-title">Moi thu ban can de<br />tu dong hoa Messenger</h2>
+  <p class="section-sub">Khong can server rieng, khong can code. Cai dat trong 5 phut, hoat dong ngay.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(99,102,241,.15)">&#x1F916;</div>
+      <h3>AI tu dong tra loi</h3>
+      <p>Phan tich noi dung tin nhan va tra loi tu nhien bang ngon ngu cua nguoi dung. Ho tro da ngon ngu.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(34,197,94,.15)">&#x1F50C;</div>
+      <h3>Ket noi 1-click</h3>
+      <p>Bam "Ket noi Gemini" → dang nhap Google → xong. Khong can copy API key, khong can cai dat phuc tap.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(251,191,36,.15)">&#x1F4CA;</div>
+      <h3>Dashboard quan ly</h3>
+      <p>Theo doi so luong tin nhan xu ly, trang thai bot, model dang dung, tat/bat tu dong tren admin panel.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(239,68,68,.15)">&#x1F517;</div>
+      <h3>Tao link cho user</h3>
+      <p>Admin tao link 1-lan, gui cho user. User bam link → chon tai khoan AI → ket noi tuc thi.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(139,92,246,.15)">&#x1F4DD;</div>
+      <h3>Tuy chinh system prompt</h3>
+      <p>Dinh nghia vai tro, phong cach va gioi han cua bot. Thay doi truc tiep tren dashboard.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(14,165,233,.15)">&#x1F6E1;&#xFE0F;</div>
+      <h3>Bao mat cao</h3>
+      <p>API key ma hoa phia server, admin token bao ve dashboard, link 1-lan tu het han sau khi dung.</p>
+    </div>
+  </div>
+</section>
+
+<section id="ai-providers" style="padding-top:0">
+  <div class="section-label">AI Providers</div>
+  <h2 class="section-title">Ket noi AI ban yeu thich</h2>
+  <p class="section-sub">Ho tro nhieu nha cung cap AI hang dau. Them moi trong vai giay.</p>
+  <div class="providers-grid">
+    <div class="provider-card">
+      <div class="provider-logo" style="background:rgba(66,133,244,.15)">&#x1F1EC;&#x1F1F4;</div>
+      <div><h4>Google Gemini</h4><p>Dang nhap Google OAuth</p></div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-logo" style="background:rgba(139,92,246,.15)">&#x1F9E0;</div>
+      <div><h4>Claude (Anthropic)</h4><p>API Key<span class="badge-soon">soon</span></p></div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-logo" style="background:rgba(16,185,129,.15)">&#x2728;</div>
+      <div><h4>OpenAI GPT</h4><p>API Key<span class="badge-soon">soon</span></p></div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-logo" style="background:rgba(99,102,241,.15)">&#x1F300;</div>
+      <div><h4>9Router</h4><p>Gateway nhieu model</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="huong-dan" style="padding-top:0">
+  <div class="section-label">Huong dan</div>
+  <h2 class="section-title">Bat dau trong 4 buoc</h2>
+  <p class="section-sub">Toan bo quy trinh setup khong qua 5 phut.</p>
+  <div class="flow">
+    <div class="flow-step"><h3>&#x1F510; Dang nhap Admin</h3><p>Truy cap /admin, nhap Admin Token do chu so huu he thong cung cap.</p></div>
+    <div class="flow-step"><h3>&#x1F916; Ket noi AI</h3><p>Bam "Ket noi Gemini", dang nhap tai khoan Google, chap nhan quyen truy cap.</p></div>
+    <div class="flow-step"><h3>&#x1F4F1; Ket noi Facebook</h3><p>Nhap Facebook cookie de bot co the doc va gui tin nhan thay ban.</p></div>
+    <div class="flow-step"><h3>&#x1F680; Khoi dong bot</h3><p>Bam Start. Bot tu dong tra loi moi tin nhan moi tu nguoi dung.</p></div>
+  </div>
+</section>
+
+<div class="cta-section">
+  <h2 style="font-size:2rem;font-weight:900;margin-bottom:1rem">San sang bat dau?</h2>
+  <p style="color:var(--muted);margin-bottom:2rem">Vao admin panel de cai dat bot cua ban ngay bay gio.</p>
+  <a href="/admin" class="btn btn-primary" style="font-size:1rem;padding:1rem 2.5rem">&#x2794; Vao Admin Panel</a>
+</div>
+
+<footer>
+  <p>WolfMod Bot &bull; <a href="/admin">Admin</a> &bull; Ho tro: Gemini, Claude, GPT, 9Router</p>
+  <p style="margin-top:.5rem">Built with Express + TypeScript &bull; Deployed on Railway</p>
+</footer>
+
+</body>
+</html>
