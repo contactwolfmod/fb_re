@@ -61,8 +61,8 @@ export default function AiConfig() {
 
   function openConnectPopup() {
     const redirectUrl = window.location.origin + "/ai-config";
-    const url = `/connect/9router?redirect=${encodeURIComponent(redirectUrl)}`;
-    const popup = window.open(url, "9router-connect", "width=500,height=680,resizable=no,scrollbars=yes");
+    const url = `/connect/gemini?redirect=${encodeURIComponent(redirectUrl)}`;
+    const popup = window.open(url, "gemini-connect", "width=500,height=680,resizable=no,scrollbars=yes");
     if (!popup) {
       // Fallback: navigate directly
       window.location.href = url;

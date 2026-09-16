@@ -143,6 +143,39 @@ export function updateUserAiModel(threadId: string, model: string): boolean {
   return true;
 }
 
+export async function fetchGeminiModels(accessToken: string): Promise<string[]> {
+  const fallbackModels = [
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+  ];
+  if (!accessToken) return fallbackModels;
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        models?: Array<{ name: string; supportedGenerationMethods?: string[] }>;
+      };
+      const list = (data.models ?? [])
+        .filter(m => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"))
+        .map(m => m.name.replace(/^models\//, ""))
+        .filter(name => !name.includes("embedding") && !name.includes("aqa") && !name.includes("imagen"));
+      if (list.length > 0) {
+        return Array.from(new Set(list));
+      }
+    }
+  } catch {
+    // Network or quota error; return standard fallback models
+  }
+  return fallbackModels;
+}
+
 export function deleteUserAiConfig(threadId: string): void {
   userAiConfigs.delete(threadId);
 }

@@ -9,7 +9,8 @@ import { logger } from "./lib/logger";
 import { botState } from "./bot/state";
 import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUsed,
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GEMINI_BASE_URL, GEMINI_DEFAULT_MODEL,
-  createOAuthState, consumeOAuthState, setUserAiConfig, getSessionUser } from "./lib/adminAuth";
+  createOAuthState, consumeOAuthState, setUserAiConfig, getSessionUser,
+  fetchGeminiModels, updateUserAiModel } from "./lib/adminAuth";
 
 const app: Express = express();
 
@@ -152,18 +153,30 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
         connectedAt: Date.now(),
       });
       if (userTokenId) markUserTokenUsed(userTokenId, "gemini-oauth");
-      const ut = userTokenId ? getUserToken(userTokenId) : undefined;
-      const redirectUrl = serviceUserId ? `/u/${encodeURIComponent(serviceUserId)}` : (ut?.redirectUrl || "/");
-      logger.info({ threadId, model: GEMINI_DEFAULT_MODEL }, "Gemini connected per-user via OAuth");
-      // Show success page
+      if (serviceUserId) {
+        res.redirect(`/u/${encodeURIComponent(serviceUserId)}?geminiOk=1`);
+        return;
+      }
+
+      const availableModels = await fetchGeminiModels(tokens.access_token);
+      const modelOptions = availableModels
+        .map(m => `<option value="${m}" ${m === GEMINI_DEFAULT_MODEL ? "selected" : ""}>${m}</option>`)
+        .join("");
+
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;padding:2rem;text-align:center">
-        <div style="font-size:3rem">✅</div>
-        <h2 style="color:#4ade80">Da ket noi Gemini thanh cong!</h2>
-        <p style="color:#94a3b8">Bot se su dung Gemini cua ban de tra loi tin nhan tu bay gio.</p>
-        <p style="color:#64748b;font-size:.85rem">Model: <strong style="color:#818cf8">${GEMINI_DEFAULT_MODEL}</strong></p>
-        ${redirectUrl && redirectUrl !== "/" ? `<a href="${redirectUrl}" style="margin-top:.5rem;color:#6366f1;text-decoration:none">Tiep tuc &rarr;</a>` : ""}
-      </body></html>`);
+      res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chon Model Gemini</title>
+      <style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0b0d14;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;margin:0}.card{background:#121624;border:1px solid #23293e;border-radius:14px;padding:28px;max-width:480px;width:100%;text-align:center}select,input{width:100%;padding:12px;border-radius:8px;border:1px solid #333a52;background:#080a10;color:#fff;font-size:15px;margin:10px 0 16px}button{background:#6366f1;color:#fff;border:0;border-radius:8px;padding:12px 20px;font-weight:600;font-size:15px;cursor:pointer;width:100%}</style>
+      </head><body><div class="card">
+        <div style="font-size:3rem;margin-bottom:8px">&#x1F389;</div>
+        <h2 style="color:#4ade80;margin:0 0 8px">Da ket noi Google thanh cong!</h2>
+        <p style="color:#94a3b8;font-size:14px;margin-bottom:20px">Chon model Gemini ma ban muon bot su dung khi tra loi Messenger:</p>
+        <form method="POST" action="/connect/gemini/select-model">
+          <input type="hidden" name="threadId" value="${threadId}" />
+          <select name="model">${modelOptions}</select>
+          <button type="submit">Xac nhan Model &amp; Bat dau dung</button>
+        </form>
+      </div></body></html>`);
+      return;
     } else if (isAdmin) {
       // Admin flow: set global botState (legacy)
       botState.aiBaseUrl = GEMINI_BASE_URL;
@@ -186,124 +199,30 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
 
 
 
-app.get("/connect/9router", (req: Request, res: Response) => {
-  const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
-  const isAdmin = ADMIN_TOKEN && adminCookie === ADMIN_TOKEN;
-  const userTokenId = req.query["userToken"] as string | undefined;
-
-  if (!isAdmin) {
-    if (!userTokenId) { res.status(403).send("Truy cap bi tu choi. Can co link do admin cap."); return; }
-    const ut = getUserToken(userTokenId);
-    if (!ut) { res.status(403).send("Link khong hop le hoac da het han."); return; }
-    if (ut.expiresAt < Date.now()) { res.status(403).send("Link da het han."); return; }
-    if (ut.usedAt) { res.status(403).send("Link nay da duoc su dung roi."); return; }
+app.post("/connect/gemini/select-model", (req: Request, res: Response) => {
+  const { threadId, model } = req.body as { threadId?: string; model?: string };
+  if (threadId && model) {
+    updateUserAiModel(threadId, model.replace(/^models\//, "").trim());
   }
-
-  const ut = userTokenId ? getUserToken(userTokenId) : undefined;
-  const redirect = String(req.query["redirect"] ?? ut?.redirectUrl ?? "");
-  const accountLabel = ut?.label ?? "Admin";
-
-  // Build account block
-  let accountBlock = "";
-  if (ut?.aiAccountId) {
-    const acc = getAiAccount(ut.aiAccountId);
-    if (acc) {
-      accountBlock = `<div class="acct-card">
-        <div class="acct-avatar">&#x1F916;</div>
-        <div class="acct-info">
-          <div class="acct-name">${acc.name}</div>
-          <div class="acct-sub">Tai khoan AI duoc cap quyen</div>
-          <div class="acct-model">${acc.model}</div>
-        </div>
-      </div>`;
-    } else {
-      accountBlock = `<div style="color:#f87171;font-size:13px;margin-bottom:16px;">Tai khoan AI khong ton tai hoac da bi xoa.</div>`;
-    }
-  } else if (isAdmin) {
-    // Admin flow without pre-set account — show current config
-    accountBlock = `<div class="acct-card">
-      <div class="acct-avatar">&#x1F916;</div>
-      <div class="acct-info">
-        <div class="acct-name">Admin config hien tai</div>
-        <div class="acct-sub">Ket noi voi cau hinh dang hoat dong</div>
-        <div class="acct-model">${botState.aiModel || "chua cau hinh"}</div>
-      </div>
-    </div>`;
-  }
-
-  let html = fs.readFileSync(CONNECT_PAGE, "utf8");
-  html = html
-    .replace(/\{\{REDIRECT\}\}/g, redirect)
-    .replace(/\{\{USER_TOKEN\}\}/g, userTokenId ?? "")
-    .replace(/\{\{ACCOUNT_LABEL\}\}/g, accountLabel)
-    .replace(/\{\{ACCOUNT_BLOCK\}\}/g, accountBlock);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.send(html);
+  res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cai dat thanh cong</title>
+  <style>body{font-family:sans-serif;background:#0b0d14;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;padding:20px;text-align:center}</style>
+  </head><body>
+    <div style="font-size:3.5rem">&#x2705;</div>
+    <h2 style="color:#4ade80;margin:0">Cai dat Model thanh cong!</h2>
+    <p style="color:#94a3b8">Bot Facebook Messenger se tra loi tin nhan bang model Gemini ban vua chon.</p>
+    <p style="color:#64748b;font-size:13px">Ban co the dong tab nay va tiep tuc chat tren Messenger.</p>
+  </body></html>`);
 });
 
-app.post("/connect/9router/authorize", async (req: Request, res: Response) => {
-  const body = req.body as { redirect?: string; userToken?: string };
-  const { redirect, userToken: userTokenId } = body;
+app.get("/connect/9router", (req: Request, res: Response) => {
+  const q = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+  res.redirect(302, "/connect/gemini" + q);
+});
 
-  const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
-  const isAdmin = ADMIN_TOKEN && adminCookie === ADMIN_TOKEN;
-
-  if (!isAdmin) {
-    if (!userTokenId) { res.status(403).send("Khong co quyen."); return; }
-    const ut = getUserToken(userTokenId);
-    if (!ut || ut.expiresAt < Date.now() || ut.usedAt) {
-      res.status(403).send("Link het han hoac da dung roi."); return;
-    }
-  }
-
-  const ut = userTokenId ? getUserToken(userTokenId) : undefined;
-
-  // Resolve AI config: from linked account (user flow) or existing botState (admin)
-  let baseUrl = botState.aiBaseUrl;
-  let apiKey = botState.aiApiKey;
-  let model = botState.aiModel;
-
-  if (ut?.aiAccountId) {
-    const acc = getAiAccount(ut.aiAccountId);
-    if (!acc) { res.status(400).send("Tai khoan AI duoc gan vao link nay khong ton tai."); return; }
-    baseUrl = acc.baseUrl;
-    apiKey = acc.apiKey;
-    model = acc.model;
-  }
-
-  if (!baseUrl || !apiKey) {
-    res.status(400).send("Chua co cau hinh AI. Admin can them AI Account truoc.");
-    return;
-  }
-
-  // Test connection
-  try {
-    const testUrl = baseUrl.replace(/\/+$/, "") + "/models";
-    const testRes = await fetch(testUrl, {
-      headers: { Authorization: "Bearer " + apiKey },
-      signal: AbortSignal.timeout(8000),
-    } as RequestInit & { signal: AbortSignal });
-    if (!testRes.ok) throw new Error("HTTP " + testRes.status);
-  } catch (err: any) {
-    const errMsg = encodeURIComponent(err?.message ?? "Ket noi that bai");
-    const utParam = userTokenId ? `&userToken=${userTokenId}` : "";
-    res.redirect("/connect/9router?redirect=" + encodeURIComponent(redirect ?? "") + utParam + "&error=" + errMsg);
-    return;
-  }
-
-  // Apply
-  botState.aiBaseUrl = baseUrl;
-  botState.aiApiKey = apiKey;
-  botState.aiModel = model;
-  if (userTokenId) markUserTokenUsed(userTokenId, ut?.label);
-
-  logger.info({ baseUrl: botState.aiBaseUrl, model: botState.aiModel }, "9Router authorized");
-
-  const target =
-    redirect && redirect.startsWith("http")
-      ? redirect + (redirect.includes("?") ? "&" : "?") + "connected=1&model=" + encodeURIComponent(botState.aiModel)
-      : "/admin";
-  res.redirect(target);
+app.post("/connect/9router/authorize", (req: Request, res: Response) => {
+  const q = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+  res.redirect(302, "/connect/gemini" + q);
 });
 
 // ── Dashboard SPA static files ───────────────────────────────────────────────────────────
