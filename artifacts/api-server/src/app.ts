@@ -9,7 +9,7 @@ import { logger } from "./lib/logger";
 import { botState } from "./bot/state";
 import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUsed,
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GEMINI_BASE_URL, GEMINI_DEFAULT_MODEL,
-  createOAuthState, consumeOAuthState, setUserAiConfig } from "./lib/adminAuth";
+  createOAuthState, consumeOAuthState, setUserAiConfig, getSessionUser } from "./lib/adminAuth";
 
 const app: Express = express();
 
@@ -37,7 +37,9 @@ app.use("/api", router);
 // Already handled by adminRouter via /api? No: admin pages are NOT under /api.
 // We mount the admin router directly on app too so /admin/* works without /api prefix.
 import adminRouterDirect from "./routes/admin";
+import userRouter from "./routes/user";
 app.use(adminRouterDirect);
+app.use(userRouter);
 
 const LANDING_PAGE = path.join(__dirname, "landing.html");
 const CONNECT_PAGE = path.join(__dirname, "connect-page.html");
@@ -59,9 +61,10 @@ app.get("/connect/gemini", (req: Request, res: Response) => {
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
   const isAdmin = !!(ADMIN_TOKEN && adminCookie === ADMIN_TOKEN);
   const userTokenId = req.query["userToken"] as string | undefined;
+  const serviceUser = getSessionUser((req as any).cookies?.userSession);
 
-  // Validate access: either admin or valid user token
-  if (!isAdmin) {
+  // Validate access: admin, logged-in service user, or legacy one-time link
+  if (!isAdmin && !serviceUser) {
     if (!userTokenId) { res.status(401).send("Yeu cau dang nhap admin hoac co link hop le."); return; }
     const ut = getUserToken(userTokenId);
     if (!ut || ut.expiresAt < Date.now() || ut.usedAt) {
@@ -86,8 +89,8 @@ app.get("/connect/gemini", (req: Request, res: Response) => {
   }
 
   const ut = userTokenId ? getUserToken(userTokenId) : undefined;
-  const threadId = ut?.fbThreadId;
-  const state = createOAuthState(isAdmin, threadId, userTokenId);
+  const threadId = serviceUser?.fbThreadId ?? ut?.fbThreadId;
+  const state = createOAuthState(isAdmin, threadId, userTokenId, serviceUser?.id);
   const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -136,7 +139,7 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
     };
     if (!tokens.access_token) throw new Error("Khong co access_token trong response");
 
-    const { isAdmin, threadId, userTokenId } = stateData;
+    const { isAdmin, threadId, userTokenId, serviceUserId } = stateData;
 
     if (threadId) {
       // Per-user flow: save to UserAiConfig keyed by FB thread ID
@@ -150,7 +153,7 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
       });
       if (userTokenId) markUserTokenUsed(userTokenId, "gemini-oauth");
       const ut = userTokenId ? getUserToken(userTokenId) : undefined;
-      const redirectUrl = ut?.redirectUrl || "/";
+      const redirectUrl = serviceUserId ? `/u/${encodeURIComponent(serviceUserId)}` : (ut?.redirectUrl || "/");
       logger.info({ threadId, model: GEMINI_DEFAULT_MODEL }, "Gemini connected per-user via OAuth");
       // Show success page
       res.setHeader("Content-Type", "text/html; charset=utf-8");

@@ -1,5 +1,5 @@
 ﻿import { type Request, type Response, type NextFunction } from "express";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 
 // Admin token from env (required). If not set, admin routes return 503.
 export const ADMIN_TOKEN = process.env["ADMIN_TOKEN"] ?? "";
@@ -13,21 +13,21 @@ export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta
 export const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
 
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
-const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; threadId?: string; userTokenId?: string }>();
+const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; threadId?: string; userTokenId?: string; serviceUserId?: string }>();
 
-export function createOAuthState(isAdmin: boolean, threadId?: string, userTokenId?: string): string {
+export function createOAuthState(isAdmin: boolean, threadId?: string, userTokenId?: string, serviceUserId?: string): string {
   const state = randomUUID();
-  oauthStates.set(state, { createdAt: Date.now(), isAdmin, threadId, userTokenId });
+  oauthStates.set(state, { createdAt: Date.now(), isAdmin, threadId, userTokenId, serviceUserId });
   return state;
 }
 
-export function consumeOAuthState(state: string): { isAdmin: boolean; threadId?: string; userTokenId?: string } | undefined {
+export function consumeOAuthState(state: string): { isAdmin: boolean; threadId?: string; userTokenId?: string; serviceUserId?: string } | undefined {
   const s = oauthStates.get(state);
   if (!s) return undefined;
   oauthStates.delete(state);
   // expire after 10 min
   if (Date.now() - s.createdAt > 600_000) return undefined;
-  return { isAdmin: s.isAdmin, threadId: s.threadId, userTokenId: s.userTokenId };
+  return { isAdmin: s.isAdmin, threadId: s.threadId, userTokenId: s.userTokenId, serviceUserId: s.serviceUserId };
 }
 
 // cleanup every 10 min
@@ -136,6 +136,13 @@ export function getUserAiConfig(threadId: string): UserAiConfig | undefined {
   return userAiConfigs.get(threadId);
 }
 
+export function updateUserAiModel(threadId: string, model: string): boolean {
+  const config = userAiConfigs.get(threadId);
+  if (!config) return false;
+  config.model = model;
+  return true;
+}
+
 export function deleteUserAiConfig(threadId: string): void {
   userAiConfigs.delete(threadId);
 }
@@ -143,6 +150,70 @@ export function deleteUserAiConfig(threadId: string): void {
 export function listUserAiConfigs(): UserAiConfig[] {
   return [...userAiConfigs.values()].sort((a, b) => b.connectedAt - a.connectedAt);
 }
+
+// ── Managed service users ─────────────────────────────────────────────────────
+export interface ServiceUser {
+  id: string;
+  name: string;
+  passwordHash: string;
+  fbThreadId: string;
+  active: boolean;
+  createdAt: number;
+}
+
+const serviceUsers = new Map<string, ServiceUser>();
+const userSessions = new Map<string, { userId: string; expiresAt: number }>();
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, expected] = stored.split(":");
+  if (!salt || !expected) return false;
+  const actual = scryptSync(password, salt, 64).toString("hex");
+  const expectedBuffer = Buffer.from(expected, "hex");
+  const actualBuffer = Buffer.from(actual, "hex");
+  return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+export function createServiceUser(opts: { id: string; name: string; password: string; fbThreadId: string }): ServiceUser {
+  const id = opts.id.toLowerCase();
+  if (serviceUsers.has(id)) throw new Error("ID nguoi dung da ton tai.");
+  const user: ServiceUser = { id, name: opts.name, passwordHash: hashPassword(opts.password), fbThreadId: opts.fbThreadId, active: true, createdAt: Date.now() };
+  serviceUsers.set(id, user);
+  return user;
+}
+
+export function getServiceUser(id: string): ServiceUser | undefined { return serviceUsers.get(id.toLowerCase()); }
+export function listServiceUsers(): ServiceUser[] { return [...serviceUsers.values()].sort((a, b) => b.createdAt - a.createdAt); }
+export function deleteServiceUser(id: string): void {
+  serviceUsers.delete(id.toLowerCase());
+  for (const [sessionId, session] of userSessions) if (session.userId === id.toLowerCase()) userSessions.delete(sessionId);
+}
+export function setServiceUserActive(id: string, active: boolean): void {
+  const user = getServiceUser(id);
+  if (user) user.active = active;
+}
+export function createUserSession(userId: string): string {
+  const sessionId = randomBytes(32).toString("hex");
+  userSessions.set(sessionId, { userId, expiresAt: Date.now() + 7 * 24 * 3_600_000 });
+  return sessionId;
+}
+export function authenticateServiceUser(id: string, password: string): ServiceUser | undefined {
+  const user = getServiceUser(id);
+  return user?.active && verifyPassword(password, user.passwordHash) ? user : undefined;
+}
+export function getSessionUser(sessionId?: string): ServiceUser | undefined {
+  if (!sessionId) return undefined;
+  const session = userSessions.get(sessionId);
+  if (!session || session.expiresAt < Date.now()) { userSessions.delete(sessionId); return undefined; }
+  const user = getServiceUser(session.userId);
+  return user?.active ? user : undefined;
+}
+export function deleteUserSession(sessionId?: string): void { if (sessionId) userSessions.delete(sessionId); }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {

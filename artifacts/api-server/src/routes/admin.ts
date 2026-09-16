@@ -8,6 +8,11 @@ import {
   createAiAccount,
   listAiAccounts,
   deleteAiAccount,
+  createServiceUser,
+  listServiceUsers,
+  deleteServiceUser,
+  setServiceUserActive,
+  listUserAiConfigs,
 } from "../lib/adminAuth";
 import { botState } from "../bot/state";
 
@@ -20,8 +25,12 @@ const router: IRouter = Router();
 function css() {
   return `
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
-    .card{background:#1a1d27;border:1px solid #2d3148;border-radius:12px;padding:2rem;width:100%;max-width:640px;box-shadow:0 8px 32px #0008}
+    body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#090b12;color:#e2e8f0;min-height:100vh;padding:24px}
+    .card{background:#121620;border:1px solid #282f43;border-radius:16px;padding:28px;width:100%;max-width:1440px;margin:auto;box-shadow:0 20px 60px #0007}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:22px;border-bottom:1px solid #282f43;margin-bottom:22px}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);display:grid;place-items:center;font-size:20px}.page-title{font-size:1.45rem;font-weight:750;color:#f8fafc}.page-sub{font-size:.82rem;color:#94a3b8;margin-top:3px}.section{padding:24px 0;border-top:1px solid #282f43}.section:first-of-type{border-top:0;padding-top:0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.section-title{font-size:1rem;font-weight:700;color:#f8fafc}.section-note{font-size:.78rem;color:#64748b}
+    .dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}.metric{background:linear-gradient(145deg,#171c2a,#11151f);border:1px solid #29324a;border-radius:13px;padding:16px}.metric-label{font-size:.75rem;color:#94a3b8}.metric-value{font-size:1.65rem;font-weight:750;color:#f8fafc;margin-top:7px}.metric-foot{font-size:.72rem;color:#64748b;margin-top:4px}.panel{background:#0d1018;border:1px solid #252d40;border-radius:13px;padding:18px}
+    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.span-all{grid-column:1/-1}.table-wrap{overflow-x:auto;border:1px solid #252d40;border-radius:12px;background:#0d1018} @media(max-width:900px){body{padding:12px}.card{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:560px){.topbar{align-items:flex-start;flex-direction:column}.dashboard-grid,.form-grid{grid-template-columns:1fr}.card{padding:14px}}
+
     h1{font-size:1.4rem;font-weight:700;margin-bottom:.25rem;color:#f1f5f9}
     .sub{color:#94a3b8;font-size:.85rem;margin-bottom:1.5rem}
     label{display:block;font-size:.8rem;color:#94a3b8;margin-bottom:.35rem;font-weight:500}
@@ -48,6 +57,8 @@ function css() {
     .sep{height:1px;background:#2d3148;margin:1.5rem 0}
     .link-box{background:#252836;border:1px solid #3a3f5c;border-radius:8px;padding:.6rem 1rem;font-size:.78rem;color:#818cf8;word-break:break-all;margin-top:.5rem}
     .mono{font-family:monospace}
+    /* Wide 9Router-style dashboard */
+    body{padding:0;background-color:#171717;background-image:linear-gradient(#2a241f66 1px,transparent 1px),linear-gradient(90deg,#2a241f66 1px,transparent 1px);background-size:48px 48px}.admin-shell{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}.sidebar{background:#202020;border-right:1px solid #303030;padding:28px 16px;position:sticky;top:0;height:100vh}.side-brand{font-size:1.25rem;font-weight:800;color:#f5f5f5;margin:0 10px 30px}.side-brand b{display:block;color:#aaa;font-size:.75rem;margin-top:4px}.nav-item{display:block;padding:12px 14px;border-radius:9px;color:#aeb4c0;text-decoration:none;font-weight:650;margin:5px 0}.nav-item.active{background:#3c2b26;color:#f26a45}.nav-label{font-size:.72rem;color:#777d88;letter-spacing:.08em;margin:24px 14px 8px}.admin-main{padding:32px 48px;max-width:1600px;width:100%}.card{max-width:none;margin:0;background:#202020;border-color:#303030;box-shadow:none}.topbar{border-color:#343434}.brand-mark{background:#e75e3d}.dashboard-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.metric,.panel,.table-wrap{background:#242424;border-color:#343434}.metric{border-radius:14px}.btn-primary{background:#e75e3d}.btn-ghost{background:#2b2b2b;border-color:#454545}.section{border-color:#343434}@media(max-width:900px){.admin-shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;padding:18px}.nav-item{display:inline-block}.admin-main{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}}
   `;
 }
 
@@ -128,6 +139,10 @@ router.post("/admin/logout", (req: Request, res: Response) => {
 router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const tokens = listUserTokens();
   const accounts = listAiAccounts();
+  const serviceUsers = listServiceUsers();
+  const connectedThreads = new Set(listUserAiConfigs().map(config => config.threadId));
+  const activeUsers = serviceUsers.filter(user => user.active).length;
+  const geminiUsers = serviceUsers.filter(user => connectedThreads.has(user.fbThreadId)).length;
   const geminiOk = req.query["geminiOk"] as string | undefined;
   const geminiErr = req.query["geminiErr"] as string | undefined;
   const created = req.query["created"] as string | undefined;
@@ -164,6 +179,8 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         </tr>`;
       }).join("");
 
+  const serviceUserRows = serviceUsers.length === 0 ? `<tr><td colspan="7" style="color:#4b5563;text-align:center;padding:2rem">Chua co khach hang nao. Tao khach hang dau tien o form ben duoi.</td></tr>` : serviceUsers.map(u => `<tr><td><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.72rem;color:#818cf8;margin-top:3px">ID: ${u.id}</div></td><td class="mono" style="font-size:.76rem">${u.fbThreadId}</td><td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td><td>${u.active ? `<span class="badge badge-ok">Hoat dong</span>` : `<span class="badge badge-exp">Da khoa</span>`}</td><td>${connectedThreads.has(u.fbThreadId) ? `<span class="badge badge-ok">Da ket noi</span>` : `<span class="badge badge-used">Chua ket noi</span>`}</td><td><a href="${baseOrigin}/u/${u.id}" target="_blank" rel="noreferrer" class="mono" style="font-size:.75rem;color:#818cf8">/u/${u.id} ↗</a></td><td style="white-space:nowrap"><form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost" style="padding:.35rem .7rem;font-size:.75rem">${u.active ? "Khoa" : "Mo"}</button></form> <form method="POST" action="/admin/users/delete" style="display:inline"><input type="hidden" name="id" value="${u.id}"><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td></tr>`).join("");
+
   const accOptions = accounts.length === 0
     ? `<option value="">- Chua co tai khoan AI -</option>`
     : accounts.map(a => `<option value="${a.id}">${a.name} (${a.model})</option>`).join("");
@@ -179,16 +196,16 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
 
   res.setHeader("Content-Type", "text/html;charset=utf-8");
   res.send(layout("Admin Dashboard", `
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-        <div><h1>Bot Admin</h1><p class="sub">Quan ly bot va tai khoan AI.</p></div>
+    <div class="admin-shell"><aside class="sidebar"><div class="side-brand">Bot Router<b>CONTROL PANEL</b></div><a class="nav-item active" href="/admin">▦ Dashboard</a><a class="nav-item" href="#customers">♙ Khach hang</a><a class="nav-item" href="#accounts">◇ AI Accounts</a><a class="nav-item" href="#links">↗ Gemini links</a><div class="nav-label">SYSTEM</div><a class="nav-item" href="/">⌂ Landing page</a></aside><main class="admin-main"><div class="card">
+      <header class="topbar">
+        <div class="brand"><div class="brand-mark">◆</div><div><div class="page-title">Trung tam quan tri</div><div class="page-sub">Quan ly khach hang, ket noi Gemini va Facebook Bot</div></div></div>
         <form method="POST" action="/admin/logout"><button class="btn btn-ghost">Dang xuat</button></form>
-      </div>
-      <div class="stat">
-        <div class="stat-box"><div class="stat-label">Trang thai bot</div><div class="stat-val" style="font-size:1rem;text-transform:capitalize">${botState.status}</div></div>
-        <div class="stat-box"><div class="stat-label">Tin nhan xu ly</div><div class="stat-val">${botState.messagesHandled}</div></div>
-        <div class="stat-box"><div class="stat-label">AI Model</div><div class="stat-val" style="font-size:.75rem;font-family:monospace;padding-top:.35rem">${botState.aiModel || "chua cau hinh"}</div></div>
-        <div class="stat-box"><div class="stat-label">9Router URL</div><div class="stat-val" style="font-size:.7rem;font-family:monospace;padding-top:.35rem">${botState.aiBaseUrl || "chua cau hinh"}</div></div>
+      </header>
+      <div class="dashboard-grid">
+        <div class="metric"><div class="metric-label">Tong khach hang</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con da cap phep</div></div>
+        <div class="metric"><div class="metric-label">Dang hoat dong</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tai khoan dang khoa</div></div>
+        <div class="metric"><div class="metric-label">Da ket noi Gemini</div><div class="metric-value" style="color:#818cf8">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
+        <div class="metric"><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.1rem;padding-top:7px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhan da xu ly</div></div>
       </div>
       <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
         <a href="/" class="btn btn-ghost">Dashboard</a>
@@ -197,8 +214,19 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         <a href="/connect/9router" class="btn btn-ghost">9Router</a>
       </div>
       ${alerts}
+      <section id="customers" class="section">
+        <div class="section-head"><div><div class="section-title">Khach hang dich vu</div><div class="section-note">Moi khach hang co URL, mat khau, FB Thread va Gemini rieng.</div></div><span class="badge badge-ok">${activeUsers} dang hoat dong</span></div>
+        <div class="panel" style="margin-bottom:16px"><form method="POST" action="/admin/users/create" class="form-grid">
+          <div><label>Ten khach hang</label><input name="name" required maxlength="80" placeholder="Cong ty ABC"></div>
+          <div><label>ID link con</label><input name="id" required pattern="[a-z0-9-]{3,48}" placeholder="cong-ty-abc"></div>
+          <div><label>Mat khau</label><input name="password" type="password" required minlength="8" placeholder="Toi thieu 8 ky tu"></div>
+          <div><label>FB Thread ID</label><input name="fbThreadId" required placeholder="1234567890"></div>
+          <div class="span-all"><button class="btn btn-primary">+ Tao khach hang va link con</button></div>
+        </form></div>
+        <div class="table-wrap"><table><thead><tr><th>Khach hang</th><th>FB Thread ID</th><th>Ngay dang ky</th><th>Trang thai</th><th>Gemini</th><th>Trang con</th><th>Thao tac</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
+      </section>
       <div class="sep"></div>
-      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tai khoan AI (${accounts.length})</h2>
+      <h2 id="accounts" style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tai khoan AI (${accounts.length})</h2>
       <div style="overflow-x:auto"><table><thead><tr><th>Ten</th><th>Base URL</th><th>Model</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>
       <details style="margin-top:1rem">
         <summary style="cursor:pointer;color:#6366f1;font-size:.85rem;font-weight:600;padding:.5rem 0">+ Them tai khoan AI moi</summary>
@@ -211,7 +239,7 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         </form>
       </details>
       <div class="sep"></div>
-      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link ket noi Gemini cho nguoi dung</h2>
+      <h2 id="links" style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link ket noi Gemini cho nguoi dung</h2>
       <form method="POST" action="/admin/links/create" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end">
         <div><label>Nhan (ten nguoi dung)</label><input name="label" placeholder="Khach hang A" required /></div>
         <div><label>FB Thread ID (ID cuoc tro chuyen)</label><input name="fbThreadId" placeholder="1234567890" required title="Lay tu URL facebook.com/messages/t/[ID]" /></div>
@@ -222,9 +250,19 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
       <div class="sep"></div>
       <h2 style="font-size:1rem;margin-bottom:.5rem;color:#f1f5f9">Danh sach link (${tokens.length})</h2>
       <div style="overflow-x:auto"><table><thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han</th><th>Tai khoan AI</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead><tbody>${tokenRows}</tbody></table></div>
-    </div>
+    </div></main></div>
   `));
 });
+
+router.post("/admin/users/create", requireAdmin, (req: Request, res: Response) => {
+  const { id, name, password, fbThreadId } = req.body as { id?: string; name?: string; password?: string; fbThreadId?: string };
+  const safeId = id?.trim().toLowerCase() ?? "";
+  if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !fbThreadId?.trim() || !password || password.length < 8) { res.status(400).send("Thong tin user khong hop le. ID dung a-z, 0-9, -, dai 3-48; mat khau toi thieu 8 ky tu."); return; }
+  try { createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password, fbThreadId: fbThreadId.trim() }); res.redirect("/admin"); }
+  catch (err: any) { res.status(409).send(err?.message ?? "Khong tao duoc user."); }
+});
+router.post("/admin/users/toggle", requireAdmin, (req: Request, res: Response) => { const { id, active } = req.body as { id?: string; active?: string }; if (id) setServiceUserActive(id, active === "1"); res.redirect("/admin"); });
+router.post("/admin/users/delete", requireAdmin, (req: Request, res: Response) => { const { id } = req.body as { id?: string }; if (id) deleteServiceUser(id); res.redirect("/admin"); });
 
 router.post("/admin/accounts/create", requireAdmin, (req: Request, res: Response) => {
   const { name, baseUrl, apiKey, model } = req.body as { name?: string; baseUrl?: string; apiKey?: string; model?: string };
