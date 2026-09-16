@@ -7,7 +7,7 @@ import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { botState } from "./bot/state";
-import { ADMIN_TOKEN, requireAdmin, getUserToken, markUserTokenUsed } from "./lib/adminAuth";
+import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUsed } from "./lib/adminAuth";
 
 const app: Express = express();
 
@@ -41,73 +41,92 @@ app.use(adminRouterDirect);
 const CONNECT_PAGE = path.join(__dirname, "connect-page.html");
 
 app.get("/connect/9router", (req: Request, res: Response) => {
-  // Admin bypass: has valid adminToken cookie
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
   const isAdmin = ADMIN_TOKEN && adminCookie === ADMIN_TOKEN;
-
-  // User token gate
   const userTokenId = req.query["userToken"] as string | undefined;
+
   if (!isAdmin) {
-    if (!userTokenId) {
-      res.status(403).send("Truy cap bi tu choi. Can co link do admin cap.");
-      return;
-    }
+    if (!userTokenId) { res.status(403).send("Truy cap bi tu choi. Can co link do admin cap."); return; }
     const ut = getUserToken(userTokenId);
-    if (!ut) {
-      res.status(403).send("Link khong hop le hoac da het han.");
-      return;
-    }
-    if (ut.expiresAt < Date.now()) {
-      res.status(403).send("Link da het han.");
-      return;
-    }
-    if (ut.usedAt) {
-      res.status(403).send("Link nay da duoc su dung roi.");
-      return;
-    }
+    if (!ut) { res.status(403).send("Link khong hop le hoac da het han."); return; }
+    if (ut.expiresAt < Date.now()) { res.status(403).send("Link da het han."); return; }
+    if (ut.usedAt) { res.status(403).send("Link nay da duoc su dung roi."); return; }
   }
 
-  const redirect = String(req.query["redirect"] ?? (isAdmin ? "" : (getUserToken(userTokenId!)?.redirectUrl ?? "")));
-  const errorMsg = String(req.query["error"] ?? "");
-  const defaultBase =
-    botState.aiBaseUrl ||
-    process.env["AI_BASE_URL"] ||
-    "http://localhost:20128/v1";
+  const ut = userTokenId ? getUserToken(userTokenId) : undefined;
+  const redirect = String(req.query["redirect"] ?? ut?.redirectUrl ?? "");
+  const accountLabel = ut?.label ?? "Admin";
+
+  // Build account block
+  let accountBlock = "";
+  if (ut?.aiAccountId) {
+    const acc = getAiAccount(ut.aiAccountId);
+    if (acc) {
+      accountBlock = `<div class="acct-card">
+        <div class="acct-avatar">&#x1F916;</div>
+        <div class="acct-info">
+          <div class="acct-name">${acc.name}</div>
+          <div class="acct-sub">Tai khoan AI duoc cap quyen</div>
+          <div class="acct-model">${acc.model}</div>
+        </div>
+      </div>`;
+    } else {
+      accountBlock = `<div style="color:#f87171;font-size:13px;margin-bottom:16px;">Tai khoan AI khong ton tai hoac da bi xoa.</div>`;
+    }
+  } else if (isAdmin) {
+    // Admin flow without pre-set account — show current config
+    accountBlock = `<div class="acct-card">
+      <div class="acct-avatar">&#x1F916;</div>
+      <div class="acct-info">
+        <div class="acct-name">Admin config hien tai</div>
+        <div class="acct-sub">Ket noi voi cau hinh dang hoat dong</div>
+        <div class="acct-model">${botState.aiModel || "chua cau hinh"}</div>
+      </div>
+    </div>`;
+  }
 
   let html = fs.readFileSync(CONNECT_PAGE, "utf8");
-  const accountLabel = userTokenId ? (getUserToken(userTokenId)?.label ?? "") : "Admin";
   html = html
     .replace(/\{\{REDIRECT\}\}/g, redirect)
-    .replace(/\{\{BASE_URL_HINT\}\}/g, defaultBase)
-    .replace(/\{\{BASE_URL_DEFAULT\}\}/g, defaultBase)
-    .replace(/\{\{ERROR_MSG\}\}/g, errorMsg)
     .replace(/\{\{USER_TOKEN\}\}/g, userTokenId ?? "")
-    .replace(/\{\{ACCOUNT_LABEL\}\}/g, accountLabel);
+    .replace(/\{\{ACCOUNT_LABEL\}\}/g, accountLabel)
+    .replace(/\{\{ACCOUNT_BLOCK\}\}/g, accountBlock);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(html);
 });
 
 app.post("/connect/9router/authorize", async (req: Request, res: Response) => {
-  const body = req.body as { baseUrl?: string; apiKey?: string; model?: string; redirect?: string; userToken?: string; accountLabel?: string };
-  const { baseUrl, apiKey, model, redirect, userToken: userTokenId, accountLabel } = body;
+  const body = req.body as { redirect?: string; userToken?: string };
+  const { redirect, userToken: userTokenId } = body;
 
-  // Auth check
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
   const isAdmin = ADMIN_TOKEN && adminCookie === ADMIN_TOKEN;
+
   if (!isAdmin) {
-    if (!userTokenId) {
-      res.status(403).send("Khong co quyen.");
-      return;
-    }
+    if (!userTokenId) { res.status(403).send("Khong co quyen."); return; }
     const ut = getUserToken(userTokenId);
     if (!ut || ut.expiresAt < Date.now() || ut.usedAt) {
-      res.status(403).send("Link het han hoac da dung roi.");
-      return;
+      res.status(403).send("Link het han hoac da dung roi."); return;
     }
   }
 
+  const ut = userTokenId ? getUserToken(userTokenId) : undefined;
+
+  // Resolve AI config: from linked account (user flow) or existing botState (admin)
+  let baseUrl = botState.aiBaseUrl;
+  let apiKey = botState.aiApiKey;
+  let model = botState.aiModel;
+
+  if (ut?.aiAccountId) {
+    const acc = getAiAccount(ut.aiAccountId);
+    if (!acc) { res.status(400).send("Tai khoan AI duoc gan vao link nay khong ton tai."); return; }
+    baseUrl = acc.baseUrl;
+    apiKey = acc.apiKey;
+    model = acc.model;
+  }
+
   if (!baseUrl || !apiKey) {
-    res.status(400).send("Thieu Base URL hoac API Key.");
+    res.status(400).send("Chua co cau hinh AI. Admin can them AI Account truoc.");
     return;
   }
 
@@ -122,20 +141,15 @@ app.post("/connect/9router/authorize", async (req: Request, res: Response) => {
   } catch (err: any) {
     const errMsg = encodeURIComponent(err?.message ?? "Ket noi that bai");
     const utParam = userTokenId ? `&userToken=${userTokenId}` : "";
-    res.redirect(
-      "/connect/9router?redirect=" +
-        encodeURIComponent(redirect ?? "") +
-        utParam +
-        "&error=" + errMsg
-    );
+    res.redirect("/connect/9router?redirect=" + encodeURIComponent(redirect ?? "") + utParam + "&error=" + errMsg);
     return;
   }
 
-  // Save
-  botState.aiBaseUrl = baseUrl.trim();
-  botState.aiApiKey = apiKey.trim();
-  if (model && model.trim()) botState.aiModel = model.trim();
-  if (userTokenId) markUserTokenUsed(userTokenId, accountLabel?.trim());
+  // Apply
+  botState.aiBaseUrl = baseUrl;
+  botState.aiApiKey = apiKey;
+  botState.aiModel = model;
+  if (userTokenId) markUserTokenUsed(userTokenId, ut?.label);
 
   logger.info({ baseUrl: botState.aiBaseUrl, model: botState.aiModel }, "9Router authorized");
 

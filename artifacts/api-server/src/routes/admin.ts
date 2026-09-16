@@ -5,6 +5,9 @@ import {
   createUserToken,
   listUserTokens,
   deleteUserToken,
+  createAiAccount,
+  listAiAccounts,
+  deleteAiAccount,
 } from "../lib/adminAuth";
 import { botState } from "../bot/state";
 
@@ -119,139 +122,127 @@ router.post("/admin/logout", (req: Request, res: Response) => {
 // ═══════════════════════════════════════════════════════
 // GET /admin  — dashboard
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// GET /admin  — dashboard
+// ═══════════════════════════════════════════════════════
 router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const tokens = listUserTokens();
+  const accounts = listAiAccounts();
   const created = req.query["created"] as string | undefined;
   const deleted = req.query["deleted"] as string | undefined;
-
+  const accCreated = req.query["accCreated"] as string | undefined;
+  const accDeleted = req.query["accDeleted"] as string | undefined;
   const baseOrigin = `${req.protocol}://${req.get("host")}`;
 
+  const accRows = accounts.length === 0
+    ? `<tr><td colspan="4" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co tai khoan AI nao. Them o form duoi.</td></tr>`
+    : accounts.map(a => `
+        <tr>
+          <td><div style="font-weight:600;color:#e2e8f0">${a.name}</div></td>
+          <td class="mono" style="font-size:.75rem;color:#818cf8;max-width:200px;word-break:break-all">${a.baseUrl}</td>
+          <td class="mono" style="font-size:.75rem;color:#64748b">${a.model}</td>
+          <td><form method="POST" action="/admin/accounts/delete" style="display:inline"><input type="hidden" name="id" value="${a.id}" /><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td>
+        </tr>`).join("");
+
+  const accMap = new Map(accounts.map(a => [a.id, a]));
   const tokenRows = tokens.length === 0
-    ? `<tr><td colspan="6" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co link nao. Tao link o form duoi.</td></tr>`
+    ? `<tr><td colspan="7" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co link nao.</td></tr>`
     : tokens.map(t => {
-        const link = `${baseOrigin}/connect/9router?userToken=${t.id}&redirect=${encodeURIComponent(t.redirectUrl)}`;
+        const link = `${baseOrigin}/connect/9router?userToken=${t.id}`;
         const ttlLeft = Math.max(0, Math.round((t.expiresAt - Date.now()) / 60000));
-        return `
-          <tr>
-            <td>
-              <div style="font-weight:600;color:#e2e8f0">${t.label}</div>
-              <div style="font-size:.7rem;color:#4b5563">${fmtDate(t.createdAt)}</div>
-            </td>
-            <td>${tokenStatus(t)}</td>
-            <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Het han" : `Con ${ttlLeft} phut`)}</td>
-            <td style="color:#e2e8f0;max-width:140px;word-break:break-all">${t.usedByLabel ? `<span style="color:#4ade80">${t.usedByLabel}</span>` : `<span style="color:#4b5563">—</span>`}</td>
-            <td class="mono" style="max-width:260px">
-              <div class="link-box">${link}</div>
-            </td>
-            <td>
-              <form method="POST" action="/admin/links/delete" style="display:inline">
-                <input type="hidden" name="id" value="${t.id}" />
-                <button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button>
-              </form>
-            </td>
-          </tr>
-        `;
+        const accName = accMap.get(t.aiAccountId)?.name ?? `<span style="color:#f87171">?</span>`;
+        return `<tr>
+          <td><div style="font-weight:600;color:#e2e8f0">${t.label}</div><div style="font-size:.7rem;color:#4b5563">${fmtDate(t.createdAt)}</div></td>
+          <td>${tokenStatus(t)}</td>
+          <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Het han" : `Con ${ttlLeft} phut`)}</td>
+          <td style="color:#94a3b8;font-size:.8rem">${accName}</td>
+          <td style="color:#e2e8f0;max-width:140px;word-break:break-all">${t.usedByLabel ? `<span style="color:#4ade80">${t.usedByLabel}</span>` : `<span style="color:#4b5563">-</span>`}</td>
+          <td class="mono" style="max-width:260px"><div class="link-box">${link}</div></td>
+          <td><form method="POST" action="/admin/links/delete" style="display:inline"><input type="hidden" name="id" value="${t.id}" /><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td>
+        </tr>`;
       }).join("");
 
-  const newLink = created
-    ? `<div class="alert-ok">Da tao link. Copy o bang ben duoi.</div>`
-    : "";
-  const delMsg = deleted
-    ? `<div class="alert-err">Da xoa token.</div>`
-    : "";
+  const accOptions = accounts.length === 0
+    ? `<option value="">- Chua co tai khoan AI -</option>`
+    : accounts.map(a => `<option value="${a.id}">${a.name} (${a.model})</option>`).join("");
+
+  const alerts = [
+    created ? `<div class="alert-ok">Da tao link.</div>` : "",
+    deleted ? `<div class="alert-err">Da xoa link.</div>` : "",
+    accCreated ? `<div class="alert-ok">Da them tai khoan AI.</div>` : "",
+    accDeleted ? `<div class="alert-err">Da xoa tai khoan AI.</div>` : "",
+  ].join("");
 
   res.setHeader("Content-Type", "text/html;charset=utf-8");
   res.send(layout("Admin Dashboard", `
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-        <div>
-          <h1>🤖 Bot Admin</h1>
-          <p class="sub">Quan ly bot va tao link cau hinh cho nguoi dung.</p>
-        </div>
-        <form method="POST" action="/admin/logout">
-          <button class="btn btn-ghost">Dang xuat</button>
-        </form>
+        <div><h1>Bot Admin</h1><p class="sub">Quan ly bot va tai khoan AI.</p></div>
+        <form method="POST" action="/admin/logout"><button class="btn btn-ghost">Dang xuat</button></form>
       </div>
-
       <div class="stat">
-        <div class="stat-box">
-          <div class="stat-label">Trang thai bot</div>
-          <div class="stat-val" style="font-size:1rem;text-transform:capitalize">${botState.status}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Tin nhan xu ly</div>
-          <div class="stat-val">${botState.messagesHandled}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">AI Model</div>
-          <div class="stat-val" style="font-size:.75rem;font-family:monospace;padding-top:.35rem">${botState.aiModel || "chua cau hinh"}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">9Router URL</div>
-          <div class="stat-val" style="font-size:.7rem;font-family:monospace;padding-top:.35rem">${botState.aiBaseUrl || "chua cau hinh"}</div>
-        </div>
+        <div class="stat-box"><div class="stat-label">Trang thai bot</div><div class="stat-val" style="font-size:1rem;text-transform:capitalize">${botState.status}</div></div>
+        <div class="stat-box"><div class="stat-label">Tin nhan xu ly</div><div class="stat-val">${botState.messagesHandled}</div></div>
+        <div class="stat-box"><div class="stat-label">AI Model</div><div class="stat-val" style="font-size:.75rem;font-family:monospace;padding-top:.35rem">${botState.aiModel || "chua cau hinh"}</div></div>
+        <div class="stat-box"><div class="stat-label">9Router URL</div><div class="stat-val" style="font-size:.7rem;font-family:monospace;padding-top:.35rem">${botState.aiBaseUrl || "chua cau hinh"}</div></div>
       </div>
-
       <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <a href="/" class="btn btn-ghost">&#8594; Dashboard React</a>
-        <a href="/ai-config" class="btn btn-ghost">&#8594; AI Config</a>
-        <a href="/connect/9router?redirect=${encodeURIComponent(baseOrigin + "/ai-config")}" class="btn btn-primary">Ket noi 9Router</a>
+        <a href="/" class="btn btn-ghost">Dashboard React</a>
+        <a href="/ai-config" class="btn btn-ghost">AI Config</a>
       </div>
-
+      ${alerts}
       <div class="sep"></div>
-      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link cau hinh cho nguoi dung</h2>
-      ${newLink}${delMsg}
+      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tai khoan AI (${accounts.length})</h2>
+      <div style="overflow-x:auto"><table><thead><tr><th>Ten</th><th>Base URL</th><th>Model</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>
+      <details style="margin-top:1rem">
+        <summary style="cursor:pointer;color:#6366f1;font-size:.85rem;font-weight:600;padding:.5rem 0">+ Them tai khoan AI moi</summary>
+        <form method="POST" action="/admin/accounts/create" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end;margin-top:.75rem">
+          <div><label>Ten hien thi</label><input name="name" placeholder="9Router Production" required /></div>
+          <div><label>Base URL</label><input name="baseUrl" placeholder="https://api.9router.dev/v1" required /></div>
+          <div><label>API Key</label><input name="apiKey" type="password" placeholder="sk-..." required /></div>
+          <div><label>Model</label><input name="model" placeholder="cc/claude-opus-4-5" required /></div>
+          <div style="grid-column:1/-1"><button class="btn btn-primary" style="width:100%">Them tai khoan AI</button></div>
+        </form>
+      </details>
+      <div class="sep"></div>
+      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link ket noi cho nguoi dung</h2>
       <form method="POST" action="/admin/links/create" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end">
-        <div>
-          <label>Nhan (ten nguoi dung / mo ta)</label>
-          <input name="label" placeholder="Khach hang A" required />
-        </div>
-        <div>
-          <label>Redirect sau khi ket noi</label>
-          <input name="redirectUrl" value="${baseOrigin}/ai-config" />
-        </div>
-        <div>
-          <label>Hieu luc (gio)</label>
-          <select name="ttlHours">
-            <option value="1">1 gio</option>
-            <option value="6">6 gio</option>
-            <option value="24" selected>24 gio</option>
-            <option value="72">3 ngay</option>
-            <option value="168">7 ngay</option>
-          </select>
-        </div>
-        <div style="padding-bottom:1rem">
-          <button class="btn btn-primary" style="width:100%">Tao link</button>
-        </div>
+        <div><label>Nhan (ten nguoi dung)</label><input name="label" placeholder="Khach hang A" required /></div>
+        <div><label>Tai khoan AI</label><select name="aiAccountId" required>${accOptions}</select></div>
+        <div><label>Redirect sau khi ket noi</label><input name="redirectUrl" value="${baseOrigin}/ai-config" /></div>
+        <div><label>Hieu luc</label><select name="ttlHours"><option value="1">1 gio</option><option value="6">6 gio</option><option value="24" selected>24 gio</option><option value="72">3 ngay</option><option value="168">7 ngay</option></select></div>
+        <div style="grid-column:1/-1"><button class="btn btn-primary" style="width:100%" ${accounts.length === 0 ? "disabled" : ""}>Tao link</button></div>
       </form>
-
       <div class="sep"></div>
-      <h2 style="font-size:1rem;margin-bottom:.5rem;color:#f1f5f9">Danh sach link (<span>${tokens.length}</span>)</h2>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han / Da dung</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead>
-          <tbody>${tokenRows}</tbody>
-        </table>
-      </div>
+      <h2 style="font-size:1rem;margin-bottom:.5rem;color:#f1f5f9">Danh sach link (${tokens.length})</h2>
+      <div style="overflow-x:auto"><table><thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han</th><th>Tai khoan AI</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead><tbody>${tokenRows}</tbody></table></div>
     </div>
   `));
 });
 
-// ═══════════════════════════════════════════════════════
-// POST /admin/links/create
-// ═══════════════════════════════════════════════════════
+router.post("/admin/accounts/create", requireAdmin, (req: Request, res: Response) => {
+  const { name, baseUrl, apiKey, model } = req.body as { name?: string; baseUrl?: string; apiKey?: string; model?: string };
+  if (!name || !baseUrl || !apiKey || !model) { res.status(400).send("Thieu thong tin."); return; }
+  createAiAccount({ name: name.trim().slice(0, 80), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim().slice(0, 100) });
+  res.redirect("/admin?accCreated=1");
+});
+
+router.post("/admin/accounts/delete", requireAdmin, (req: Request, res: Response) => {
+  const { id } = req.body as { id?: string };
+  if (id) deleteAiAccount(id);
+  res.redirect("/admin?accDeleted=1");
+});
+
 router.post("/admin/links/create", requireAdmin, (req: Request, res: Response) => {
-  const { label, ttlHours, redirectUrl } = req.body as { label?: string; ttlHours?: string; redirectUrl?: string };
+  const { label, ttlHours, redirectUrl, aiAccountId } = req.body as { label?: string; ttlHours?: string; redirectUrl?: string; aiAccountId?: string };
+  if (!aiAccountId) { res.status(400).send("Phai chon tai khoan AI."); return; }
   const safeLabel = (label ?? "User").slice(0, 80);
   const ttl = Math.min(Math.max(Number(ttlHours ?? 24), 1), 720);
   const redirect = (redirectUrl ?? "").trim() || `${req.protocol}://${req.get("host")}/ai-config`;
-  createUserToken({ label: safeLabel, ttlHours: ttl, redirectUrl: redirect });
+  createUserToken({ label: safeLabel, aiAccountId, ttlHours: ttl, redirectUrl: redirect });
   res.redirect("/admin?created=1");
 });
 
-// ═══════════════════════════════════════════════════════
-// POST /admin/links/delete
-// ═══════════════════════════════════════════════════════
 router.post("/admin/links/delete", requireAdmin, (req: Request, res: Response) => {
   const { id } = req.body as { id?: string };
   if (id) deleteUserToken(id);

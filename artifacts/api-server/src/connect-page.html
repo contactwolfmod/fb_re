@@ -6,123 +6,41 @@
   <title>Ket noi 9Router</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0a0a0a;
-      color: #e5e5e5;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-    .card {
-      background: #141414;
-      border: 1px solid #2a2a2a;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 440px;
-      padding: 32px;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
-    }
-    .header { text-align: center; margin-bottom: 22px; }
-    .logo {
-      width: 60px; height: 60px;
-      background: linear-gradient(135deg, #7c3aed, #4f46e5);
-      border-radius: 16px;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 16px;
-      font-size: 28px;
-      box-shadow: 0 8px 24px rgba(124,58,237,0.4);
-    }
-    .app-name { font-size: 12px; color: #555; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
-    h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
-    .subtitle { font-size: 13px; color: #777; line-height: 1.4; }
-    .account-banner {
-      background: rgba(99,102,241,0.10); border: 1px solid rgba(99,102,241,0.28);
-      border-radius: 10px; padding: 12px 14px; margin-bottom: 18px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .account-avatar {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, #6366f1, #7c3aed);
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 16px; flex-shrink: 0;
-    }
-    .account-info { flex: 1; min-width: 0; }
-    .account-name { font-size: 13px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .account-role { font-size: 11px; color: #6366f1; margin-top: 1px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background: #0a0a0a; color: #e5e5e5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card { background: #141414; border: 1px solid #2a2a2a; border-radius: 16px; width: 100%; max-width: 400px; padding: 32px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+    .logo { width: 60px; height: 60px; background: linear-gradient(135deg, #7c3aed, #4f46e5); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; box-shadow: 0 8px 24px rgba(124,58,237,0.4); }
+    .app-name { text-align:center; font-size: 11px; color: #555; margin-bottom: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+    h1 { text-align:center; font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .subtitle { text-align:center; font-size: 13px; color: #666; margin-bottom: 24px; }
+    .acct-card { background: #1a1a2e; border: 1px solid rgba(99,102,241,0.35); border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
+    .acct-avatar { width: 42px; height: 42px; background: linear-gradient(135deg, #6366f1, #7c3aed); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .acct-info { flex: 1; min-width: 0; }
+    .acct-name { font-size: 15px; font-weight: 700; color: #e2e8f0; }
+    .acct-sub { font-size: 11px; color: #6366f1; margin-top: 2px; }
+    .acct-model { font-size: 10px; color: #4b5563; font-family: monospace; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .divider { border: none; border-top: 1px solid #1e1e1e; margin: 18px 0; }
-    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
-    .scope-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-    .scope-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #999; }
-    .scope-icon { color: #7c3aed; flex-shrink: 0; }
-    .field { margin-bottom: 12px; }
-    label { display: block; font-size: 11px; font-weight: 600; color: #666; margin-bottom: 6px; letter-spacing: 0.06em; text-transform: uppercase; }
-    input {
-      width: 100%; padding: 10px 12px;
-      background: #0d0d0d; border: 1px solid #252525;
-      border-radius: 8px; color: #e5e5e5;
-      font-size: 13px; font-family: 'SFMono-Regular', Consolas, monospace;
-      outline: none; transition: border-color 0.15s;
-    }
-    input:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
-    .info-box {
-      background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.2);
-      border-radius: 8px; padding: 10px 12px;
-      font-size: 12px; color: #9b7fe8; margin-bottom: 14px; line-height: 1.6;
-    }
-    .info-box code { color: #c4b5fd; background: rgba(124,58,237,0.15); padding: 1px 5px; border-radius: 4px; }
-    .error-box {
-      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
-      border-radius: 8px; padding: 10px 12px;
-      font-size: 12px; color: #f87171;
-      margin-bottom: 14px; display: none;
-    }
-    .btn-primary {
-      width: 100%; padding: 13px;
-      background: #7c3aed; border: none;
-      border-radius: 8px; color: #fff;
-      font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: background 0.15s, transform 0.1s;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-    }
-    .btn-primary:hover { background: #6d28d9; }
-    .btn-primary:active { transform: scale(0.99); }
-    .btn-primary:disabled { background: #3a1f75; cursor: not-allowed; }
-    .btn-cancel {
-      width: 100%; padding: 10px;
-      background: transparent; border: 1px solid #222;
-      border-radius: 8px; color: #555;
-      font-size: 13px; cursor: pointer; margin-top: 8px;
-      transition: all 0.15s;
-    }
+    .scope-list { list-style: none; display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
+    .scope-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #888; }
+    .scope-icon { color: #6366f1; font-size: 14px; flex-shrink: 0; }
+    .error-box { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #f87171; margin-bottom: 14px; display: none; }
+    .btn-allow { width: 100%; padding: 14px; background: linear-gradient(135deg, #6366f1, #7c3aed); border: none; border-radius: 10px; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-allow:hover { opacity: 0.88; }
+    .btn-allow:active { transform: scale(0.98); }
+    .btn-allow:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel { width: 100%; padding: 10px; background: transparent; border: 1px solid #222; border-radius: 8px; color: #555; font-size: 13px; cursor: pointer; margin-top: 8px; transition: all 0.15s; }
     .btn-cancel:hover { border-color: #333; color: #888; }
-    .spinner {
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff; border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #444; }
+    .footer { text-align: center; margin-top: 18px; font-size: 11px; color: #333; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="header">
-      <div class="logo">&#x26A1;</div>
-      <div class="app-name">Bot Control &rarr;</div>
-      <h1>9Router AI Gateway</h1>
-      <div class="subtitle">Cap quyen de bot tu dong tra loi qua AI.</div>
-    </div>
-    <div class="account-banner">
-      <div class="account-avatar">&#x1F464;</div>
-      <div class="account-info">
-        <div class="account-name" id="acct-name">{{ACCOUNT_LABEL}}</div>
-        <div class="account-role">Tai khoan duoc cap quyen ket noi</div>
-      </div>
-    </div>
+    <div class="logo">&#x26A1;</div>
+    <div class="app-name">Bot Control &rarr; 9Router</div>
+    <h1>Cho phep ket noi AI</h1>
+    <div class="subtitle">{{ACCOUNT_LABEL}} xin phep ket noi bot voi AI.</div>
+    {{ACCOUNT_BLOCK}}
     <hr class="divider" />
     <ul class="scope-list">
       <li class="scope-item"><span class="scope-icon">&#x2713;</span>Goi API AI tao phan hoi tin nhan</li>
@@ -133,53 +51,18 @@
     <form id="form" method="POST" action="/connect/9router/authorize">
       <input type="hidden" name="redirect" value="{{REDIRECT}}" />
       <input type="hidden" name="userToken" value="{{USER_TOKEN}}" />
-      <div class="field">
-        <label>Ten / Email cua ban</label>
-        <input name="accountLabel" id="accountLabel" type="text" value="{{ACCOUNT_LABEL}}" placeholder="Nguyen Van A hoac email@example.com" required />
-      </div>
-      <div class="info-box">
-        <strong>Base URL tu dong phat hien:</strong><br />
-        <code>{{BASE_URL_HINT}}</code>
-      </div>
-      <div class="field">
-        <label>Base URL</label>
-        <input name="baseUrl" type="text" value="{{BASE_URL_DEFAULT}}" placeholder="http://localhost:20128/v1" required />
-      </div>
-      <div class="field">
-        <label>API Key (tu dashboard 9Router)</label>
-        <input name="apiKey" id="apiKey" type="password" placeholder="Paste key o day..." required />
-      </div>
-      <div class="field">
-        <label>Model (de trong = mac dinh)</label>
-        <input name="model" type="text" value="cc/claude-opus-4-5-20251101" placeholder="cc/claude-opus-4-5-20251101" />
-      </div>
-      <button class="btn-primary" id="btn" type="submit">
-        &#x26A1; Cap quyen &amp; Ket noi 9Router
-      </button>
-      <button class="btn-cancel" type="button" onclick="if(window.opener){window.close();}else{history.back();}">Huy</button>
+      <button class="btn-allow" id="btn" type="submit">&#x2713;&nbsp;&nbsp;Cho phep ket noi</button>
+      <button class="btn-cancel" type="button" onclick="if(window.opener){window.close();}else{history.back();}">Huy bo</button>
     </form>
     <div class="footer">WolfMod Bot &bull; 9Router AI Gateway</div>
   </div>
   <script>
     var params = new URLSearchParams(location.search);
     var err = params.get('error');
-    if (err) {
-      var box = document.getElementById('error-box');
-      box.style.display = 'block';
-      box.textContent = 'Loi ket noi: ' + decodeURIComponent(err);
-    }
-    var acctInput = document.getElementById('accountLabel');
-    var acctName = document.getElementById('acct-name');
-    acctInput.addEventListener('input', function() {
-      acctName.textContent = acctInput.value || '\u2014';
-    });
-    document.getElementById('apiKey').focus();
+    if (err) { var box = document.getElementById('error-box'); box.style.display = 'block'; box.textContent = 'Loi: ' + decodeURIComponent(err); }
     var form = document.getElementById('form');
     var btn = document.getElementById('btn');
-    form.addEventListener('submit', function() {
-      btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> Dang xac thuc...';
-    });
+    form.addEventListener('submit', function() { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>&nbsp;Dang ket noi...'; });
   </script>
 </body>
 </html>
