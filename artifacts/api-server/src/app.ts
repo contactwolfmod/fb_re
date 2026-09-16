@@ -75,19 +75,21 @@ app.get("/connect/9router", (req: Request, res: Response) => {
     "http://localhost:20128/v1";
 
   let html = fs.readFileSync(CONNECT_PAGE, "utf8");
+  const accountLabel = userTokenId ? (getUserToken(userTokenId)?.label ?? "") : "Admin";
   html = html
     .replace(/\{\{REDIRECT\}\}/g, redirect)
     .replace(/\{\{BASE_URL_HINT\}\}/g, defaultBase)
     .replace(/\{\{BASE_URL_DEFAULT\}\}/g, defaultBase)
     .replace(/\{\{ERROR_MSG\}\}/g, errorMsg)
-    .replace(/\{\{USER_TOKEN\}\}/g, userTokenId ?? "");
+    .replace(/\{\{USER_TOKEN\}\}/g, userTokenId ?? "")
+    .replace(/\{\{ACCOUNT_LABEL\}\}/g, accountLabel);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(html);
 });
 
 app.post("/connect/9router/authorize", async (req: Request, res: Response) => {
-  const body = req.body as { baseUrl?: string; apiKey?: string; model?: string; redirect?: string; userToken?: string };
-  const { baseUrl, apiKey, model, redirect, userToken: userTokenId } = body;
+  const body = req.body as { baseUrl?: string; apiKey?: string; model?: string; redirect?: string; userToken?: string; accountLabel?: string };
+  const { baseUrl, apiKey, model, redirect, userToken: userTokenId, accountLabel } = body;
 
   // Auth check
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
@@ -133,7 +135,7 @@ app.post("/connect/9router/authorize", async (req: Request, res: Response) => {
   botState.aiBaseUrl = baseUrl.trim();
   botState.aiApiKey = apiKey.trim();
   if (model && model.trim()) botState.aiModel = model.trim();
-  if (userTokenId) markUserTokenUsed(userTokenId);
+  if (userTokenId) markUserTokenUsed(userTokenId, accountLabel?.trim());
 
   logger.info({ baseUrl: botState.aiBaseUrl, model: botState.aiModel }, "9Router authorized");
 

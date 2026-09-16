@@ -25,7 +25,7 @@
       padding: 32px;
       box-shadow: 0 24px 64px rgba(0,0,0,0.6);
     }
-    .header { text-align: center; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 22px; }
     .logo {
       width: 60px; height: 60px;
       background: linear-gradient(135deg, #7c3aed, #4f46e5);
@@ -38,6 +38,21 @@
     .app-name { font-size: 12px; color: #555; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
     h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
     .subtitle { font-size: 13px; color: #777; line-height: 1.4; }
+    .account-banner {
+      background: rgba(99,102,241,0.10); border: 1px solid rgba(99,102,241,0.28);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .account-avatar {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #6366f1, #7c3aed);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .account-info { flex: 1; min-width: 0; }
+    .account-name { font-size: 13px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .account-role { font-size: 11px; color: #6366f1; margin-top: 1px; }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 18px 0; }
     .divider { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
     .scope-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
     .scope-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #999; }
@@ -101,6 +116,13 @@
       <h1>9Router AI Gateway</h1>
       <div class="subtitle">Cap quyen de bot tu dong tra loi qua AI.</div>
     </div>
+    <div class="account-banner">
+      <div class="account-avatar">&#x1F464;</div>
+      <div class="account-info">
+        <div class="account-name" id="acct-name">{{ACCOUNT_LABEL}}</div>
+        <div class="account-role">Tai khoan duoc cap quyen ket noi</div>
+      </div>
+    </div>
     <hr class="divider" />
     <ul class="scope-list">
       <li class="scope-item"><span class="scope-icon">&#x2713;</span>Goi API AI tao phan hoi tin nhan</li>
@@ -111,6 +133,10 @@
     <form id="form" method="POST" action="/connect/9router/authorize">
       <input type="hidden" name="redirect" value="{{REDIRECT}}" />
       <input type="hidden" name="userToken" value="{{USER_TOKEN}}" />
+      <div class="field">
+        <label>Ten / Email cua ban</label>
+        <input name="accountLabel" id="accountLabel" type="text" value="{{ACCOUNT_LABEL}}" placeholder="Nguyen Van A hoac email@example.com" required />
+      </div>
       <div class="info-box">
         <strong>Base URL tu dong phat hien:</strong><br />
         <code>{{BASE_URL_HINT}}</code>
@@ -142,6 +168,11 @@
       box.style.display = 'block';
       box.textContent = 'Loi ket noi: ' + decodeURIComponent(err);
     }
+    var acctInput = document.getElementById('accountLabel');
+    var acctName = document.getElementById('acct-name');
+    acctInput.addEventListener('input', function() {
+      acctName.textContent = acctInput.value || '\u2014';
+    });
     document.getElementById('apiKey').focus();
     var form = document.getElementById('form');
     var btn = document.getElementById('btn');

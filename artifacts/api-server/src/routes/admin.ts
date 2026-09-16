@@ -127,7 +127,7 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const baseOrigin = `${req.protocol}://${req.get("host")}`;
 
   const tokenRows = tokens.length === 0
-    ? `<tr><td colspan="5" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co link nao. Tao link o form duoi.</td></tr>`
+    ? `<tr><td colspan="6" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co link nao. Tao link o form duoi.</td></tr>`
     : tokens.map(t => {
         const link = `${baseOrigin}/connect/9router?userToken=${t.id}&redirect=${encodeURIComponent(t.redirectUrl)}`;
         const ttlLeft = Math.max(0, Math.round((t.expiresAt - Date.now()) / 60000));
@@ -139,6 +139,7 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
             </td>
             <td>${tokenStatus(t)}</td>
             <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Het han" : `Con ${ttlLeft} phut`)}</td>
+            <td style="color:#e2e8f0;max-width:140px;word-break:break-all">${t.usedByLabel ? `<span style="color:#4ade80">${t.usedByLabel}</span>` : `<span style="color:#4b5563">—</span>`}</td>
             <td class="mono" style="max-width:260px">
               <div class="link-box">${link}</div>
             </td>
@@ -228,7 +229,7 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
       <h2 style="font-size:1rem;margin-bottom:.5rem;color:#f1f5f9">Danh sach link (<span>${tokens.length}</span>)</h2>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han / Da dung</th><th>Link</th><th></th></tr></thead>
+          <thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han / Da dung</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead>
           <tbody>${tokenRows}</tbody>
         </table>
       </div>

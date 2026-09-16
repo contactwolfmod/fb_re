@@ -12,6 +12,7 @@ export interface UserToken {
   createdAt: number;
   expiresAt: number;
   usedAt: number | null;  // null = not yet used
+  usedByLabel: string;    // name/email user entered when they authorized
   redirectUrl: string;    // where to send user after connect
 }
 
@@ -26,6 +27,7 @@ export function createUserToken(opts: { label: string; ttlHours: number; redirec
     createdAt: now,
     expiresAt: now + opts.ttlHours * 3_600_000,
     usedAt: null,
+    usedByLabel: "",
     redirectUrl: opts.redirectUrl,
   };
   userTokens.set(id, token);
@@ -36,9 +38,12 @@ export function getUserToken(id: string): UserToken | undefined {
   return userTokens.get(id);
 }
 
-export function markUserTokenUsed(id: string): void {
+export function markUserTokenUsed(id: string, byLabel?: string): void {
   const t = userTokens.get(id);
-  if (t) t.usedAt = Date.now();
+  if (t) {
+    t.usedAt = Date.now();
+    if (byLabel) t.usedByLabel = byLabel.slice(0, 120);
+  }
 }
 
 export function deleteUserToken(id: string): void {
