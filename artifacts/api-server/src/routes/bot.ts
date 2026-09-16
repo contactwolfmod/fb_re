@@ -228,4 +228,16 @@ router.put('/bot/ai-config', (req, res) => {
   res.json({ success: true, aiBaseUrl: botState.aiBaseUrl, aiModel: botState.aiModel, aiTimeoutMs: botState.aiTimeoutMs, aiMaxTokens: botState.aiMaxTokens });
 });
 
+
+router.get('/bot/ai-config-status', (_req, res) => {
+  res.json({
+    aiBaseUrl: botState.aiBaseUrl,
+    aiModel: botState.aiModel,
+    aiApiKey: botState.aiApiKey ? '***' : '',
+    aiTimeoutMs: botState.aiTimeoutMs,
+    aiMaxTokens: botState.aiMaxTokens,
+    hasKey: Boolean(botState.aiApiKey),
+  });
+});
+
 export default router;

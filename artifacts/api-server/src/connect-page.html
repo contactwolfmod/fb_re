@@ -1,0 +1,169 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ket noi 9Router</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, ''Segoe UI'', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e5e5e5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .card {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 440px;
+      padding: 32px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+    .header { text-align: center; margin-bottom: 28px; }
+    .logo {
+      width: 60px; height: 60px;
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+      box-shadow: 0 8px 24px rgba(124,58,237,0.4);
+    }
+    .app-name { font-size: 12px; color: #555; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+    h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #777; line-height: 1.4; }
+    .divider { border: none; border-top: 1px solid #1e1e1e; margin: 20px 0; }
+    .scope-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .scope-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #999; }
+    .scope-icon { color: #7c3aed; flex-shrink: 0; }
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 11px; font-weight: 600; color: #666; margin-bottom: 6px; letter-spacing: 0.06em; text-transform: uppercase; }
+    input {
+      width: 100%; padding: 10px 12px;
+      background: #0d0d0d; border: 1px solid #252525;
+      border-radius: 8px; color: #e5e5e5;
+      font-size: 13px; font-family: ''SFMono-Regular'', Consolas, monospace;
+      outline: none; transition: border-color 0.15s;
+    }
+    input:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
+    .info-box {
+      background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 12px; color: #9b7fe8; margin-bottom: 14px; line-height: 1.6;
+    }
+    .info-box code { color: #c4b5fd; background: rgba(124,58,237,0.15); padding: 1px 5px; border-radius: 4px; }
+    .error-box {
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 12px; color: #f87171;
+      margin-bottom: 14px; display: none;
+    }
+    .btn-primary {
+      width: 100%; padding: 13px;
+      background: #7c3aed; border: none;
+      border-radius: 8px; color: #fff;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-primary:active { transform: scale(0.99); }
+    .btn-primary:disabled { background: #3a1f75; cursor: not-allowed; }
+    .btn-cancel {
+      width: 100%; padding: 10px;
+      background: transparent; border: 1px solid #222;
+      border-radius: 8px; color: #555;
+      font-size: 13px; cursor: pointer; margin-top: 8px;
+      transition: all 0.15s;
+    }
+    .btn-cancel:hover { border-color: #333; color: #888; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #444; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="logo">&#x26A1;</div>
+      <div class="app-name">Bot Control &rarr;</div>
+      <h1>9Router AI Gateway</h1>
+      <div class="subtitle">Cap quyen de bot tu dong tra loi qua AI<br/>ma khong can cai dat lai khi restart.</div>
+    </div>
+
+    <hr class="divider" />
+
+    <ul class="scope-list">
+      <li class="scope-item"><span class="scope-icon">&#x2713;</span>Goi API AI tao phan hoi tin nhan</li>
+      <li class="scope-item"><span class="scope-icon">&#x2713;</span>Doc danh sach model co san</li>
+      <li class="scope-item"><span class="scope-icon">&#x2713;</span>Khong luu tru du lieu nguoi dung</li>
+    </ul>
+
+    <div id="error-box" class="error-box"></div>
+
+    <form id="form" method="POST" action="/connect/9router/authorize">
+      <input type="hidden" name="redirect" value="{{REDIRECT}}" />
+
+      <div class="info-box">
+        <strong>Base URL tu dong phat hien:</strong><br />
+        <code>{{BASE_URL_HINT}}</code>
+      </div>
+
+      <div class="field">
+        <label>Base URL</label>
+        <input name="baseUrl" type="text" value="{{BASE_URL_DEFAULT}}" placeholder="http://localhost:20128/v1" required />
+      </div>
+
+      <div class="field">
+        <label>API Key (tu dashboard 9Router)</label>
+        <input name="apiKey" id="apiKey" type="password" placeholder="Paste key o day..." required />
+      </div>
+
+      <div class="field">
+        <label>Model (de trong = mac dinh)</label>
+        <input name="model" type="text" value="cc/claude-opus-4-5-20251101" placeholder="cc/claude-opus-4-5-20251101" />
+      </div>
+
+      <button class="btn-primary" id="btn" type="submit">
+        &#x26A1; Cap quyen &amp; Ket noi 9Router
+      </button>
+      <button class="btn-cancel" type="button" onclick="if(window.opener){window.close();}else{history.back();}">
+        Huy
+      </button>
+    </form>
+
+    <div class="footer">WolfMod Bot &bull; 9Router AI Gateway</div>
+  </div>
+
+  <script>
+    // Show error from query string
+    const params = new URLSearchParams(location.search);
+    const err = params.get(''error'');
+    if (err) {
+      const box = document.getElementById(''error-box'');
+      box.style.display = ''block'';
+      box.textContent = ''Loi ket noi: '' + decodeURIComponent(err);
+    }
+    // Autofocus API key
+    document.getElementById(''apiKey'').focus();
+    // Loading state
+    const form = document.getElementById(''form'');
+    const btn = document.getElementById(''btn'');
+    form.addEventListener(''submit'', () => {
+      btn.disabled = true;
+      btn.innerHTML = ''<div class="spinner"></div> Dang xac thuc...'';
+    });
+  </script>
+</body>
+</html>

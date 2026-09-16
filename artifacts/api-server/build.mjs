@@ -1,9 +1,9 @@
-import { createRequire } from "node:module";
+﻿import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, copyFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -120,9 +120,15 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
-}
 
+  // Copy static assets needed at runtime
+  await copyFile(
+    path.resolve(artifactDir, 'src/connect-page.html'),
+    path.resolve(distDir, 'connect-page.html')
+  );
+}
 buildAll().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
