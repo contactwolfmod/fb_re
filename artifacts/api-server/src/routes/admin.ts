@@ -185,11 +185,9 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
     ? `<option value="">- Chua co tai khoan AI -</option>`
     : accounts.map(a => `<option value="${a.id}">${a.name} (${a.model})</option>`).join("");
 
-  const modelSaved = req.query["modelSaved"];
   const alerts = [
-    geminiOk ? `<div class="alert-ok">&#x2713; Da ket noi Gemini thanh cong! Model: ${botState.aiModel}</div>` : "",
+    geminiOk ? `<div class="alert-ok">&#x2713; Da ket noi Gemini thanh cong!</div>` : "",
     geminiErr ? `<div class="alert-err">&#x26A0; Loi ket noi Gemini: ${decodeURIComponent(geminiErr)}</div>` : "",
-    modelSaved ? `<div class="alert-ok">&#x2705; Da cap nhat Model Admin thanh cong.</div>` : "",
     created ? `<div class="alert-ok">Da tao link.</div>` : "",
     deleted ? `<div class="alert-err">Da xoa link.</div>` : "",
     accCreated ? `<div class="alert-ok">Da them tai khoan AI.</div>` : "",
@@ -212,25 +210,6 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
       <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
         <a href="/connect/gemini" class="btn btn-primary" style="background:linear-gradient(135deg,#4285f4,#34a853)">&#x1F1EC;&#x1F1F4; Ket noi Gemini (Admin)</a>
         <a href="/" class="btn btn-ghost">Landing page</a>
-      </div>
-      <div class="panel" style="margin-bottom:16px;background:#161c2e;border:1px solid #2e3856">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-          <div>
-            <div style="font-weight:600;color:#e2e8f0">&#x2728; Model Gemini mac dinh cua Bot: <strong style="color:#818cf8">${botState.aiModel}</strong></div>
-            <div style="color:#94a3b8;font-size:.85rem">Khach hang tai /u/:id co the tu dang nhap Google va chon model rieng cua ho.</div>
-          </div>
-          <form method="POST" action="/admin/model" style="display:flex;gap:8px;align-items:center;margin:0">
-            <select name="model" style="padding:.45rem .8rem;background:#0d111d;border:1px solid #333a52;color:#fff;border-radius:6px;font-size:.85rem">
-              <option value="gemini-2.5-flash" ${botState.aiModel === "gemini-2.5-flash" ? "selected" : ""}>gemini-2.5-flash</option>
-              <option value="gemini-2.5-pro" ${botState.aiModel === "gemini-2.5-pro" ? "selected" : ""}>gemini-2.5-pro</option>
-              <option value="gemini-2.0-flash" ${botState.aiModel === "gemini-2.0-flash" ? "selected" : ""}>gemini-2.0-flash</option>
-              <option value="gemini-2.0-flash-lite" ${botState.aiModel === "gemini-2.0-flash-lite" ? "selected" : ""}>gemini-2.0-flash-lite</option>
-              <option value="gemini-1.5-flash" ${botState.aiModel === "gemini-1.5-flash" ? "selected" : ""}>gemini-1.5-flash</option>
-              <option value="gemini-1.5-pro" ${botState.aiModel === "gemini-1.5-pro" ? "selected" : ""}>gemini-1.5-pro</option>
-            </select>
-            <button class="btn btn-primary" style="padding:.45rem .85rem;font-size:.85rem">Doi Model</button>
-          </form>
-        </div>
       </div>
       ${alerts}
       <section id="customers" class="section">
@@ -310,15 +289,6 @@ router.post("/admin/links/delete", requireAdmin, (req: Request, res: Response) =
   const { id } = req.body as { id?: string };
   if (id) deleteUserToken(id);
   res.redirect("/admin?deleted=1");
-});
-
-router.post("/admin/model", requireAdmin, (req: Request, res: Response) => {
-  const { model } = req.body as { model?: string };
-  const clean = (model ?? "").replace(/^models\//, "").trim();
-  if (clean) {
-    botState.aiModel = clean;
-  }
-  res.redirect("/admin?modelSaved=1");
 });
 
 export default router;
