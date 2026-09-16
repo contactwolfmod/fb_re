@@ -230,8 +230,10 @@ const dashboardDist = process.env.DASHBOARD_DIST;
 if (dashboardDist && fs.existsSync(dashboardDist)) {
   // SPA itself is behind admin gate (the HTML cookie check happens client side;
   // actual API calls are blocked by requireAdmin above)
-  app.use(express.static(dashboardDist));
+  app.use(express.static(dashboardDist, { index: false }));
   app.use((_req: Request, res: Response, _next: NextFunction) => {
+    // SPA catch-all for dashboard routes, but NOT for root landing page
+    if (_req.path === "/") { _next(); return; }
     res.sendFile(path.join(dashboardDist, "index.html"));
   });
 }

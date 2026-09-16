@@ -126,6 +126,11 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     path.resolve(artifactDir, 'src/connect-page.html'),
     path.resolve(distDir, 'connect-page.html')
   );
+  await copyFile(
+    path.resolve(artifactDir, 'src/landing.html'),
+    path.resolve(distDir, 'landing.html')
+  );
+
 }
 buildAll().catch((err) => {
   console.error(err);
