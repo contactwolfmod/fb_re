@@ -13,8 +13,35 @@ API server nhận cookie Facebook + prompt, gọi AI và trả về reply. Có t
 **Env vars cần thiết (ít nhất 1 AI key):**
 - `ANTHROPIC_API_KEY` — Anthropic Claude (trả phí)
 - `GITHUB_TOKEN` — GitHub Models miễn phí
-- `AI_BASE_URL` + `AI_API_KEY` — OpenRouter / custom endpoint
+- `AI_BASE_URL` + `AI_API_KEY` — 9Router / OpenRouter / custom endpoint
 - `AI_MODEL` — (tùy chọn) override model name
+- `AI_TIMEOUT_MS` — timeout AI, mặc định `12000`
+- `AI_MAX_TOKENS` — giới hạn output AI, mặc định `500`
+
+## Railway + 9Router
+
+Khuyến nghị 1 Railway project, 2 services:
+
+```txt
+Railway Project
+├─ fb_re-bot
+└─ 9router
+```
+
+Env cho service `fb_re-bot`:
+
+```env
+NODE_ENV=production
+PORT=8080
+AI_BASE_URL=http://9router.railway.internal:20128/v1
+AI_API_KEY=your_9router_dashboard_key
+AI_MODEL=cc/claude-opus-4-5-20251101
+AI_TIMEOUT_MS=12000
+AI_MAX_TOKENS=500
+```
+
+Bot chỉ tự trả lời inbox 1-1. Group/community hoặc thread type khác `ONE_TO_ONE` bị bỏ qua.
+Nếu người dùng gửi ảnh mà bot không đọc được ảnh trực tiếp, bot gửi ngữ cảnh ảnh cho AI để hỏi lại người dùng mô tả thêm.
 
 ## Stack
 

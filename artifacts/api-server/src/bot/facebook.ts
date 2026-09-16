@@ -232,6 +232,20 @@ async function processDataNode(data: any, source: string) {
   }
 }
 
+function hasImageAttachment(msg: any): boolean {
+  const attachments = [
+    ...(msg.attachments ?? []),
+    ...(msg.blob_attachments ?? []),
+    ...(msg.message?.attachments ?? []),
+  ];
+  return attachments.some((att: any) => {
+    const type = String(att?.__typename ?? att?.type ?? att?.attachment_type ?? "").toLowerCase();
+    const mime = String(att?.mime_type ?? att?.mimetype ?? "").toLowerCase();
+    const url = String(att?.url ?? att?.preview?.uri ?? att?.large_preview?.uri ?? att?.image?.uri ?? "").toLowerCase();
+    return type.includes("photo") || type.includes("image") || mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+  });
+}
+
 async function checkAndHandleMsg(msg: any, threadID: string, threadType: string) {
   if (!msg || stopSignal) return;
 
@@ -243,12 +257,20 @@ async function checkAndHandleMsg(msg: any, threadID: string, threadType: string)
   if (senderId === sessionUID) return;
 
   const body: string = msg.message?.text ?? msg.body ?? "";
-  if (!body.trim()) return;
+  const isImageOnly = !body.trim() && hasImageAttachment(msg);
+  if (!body.trim() && !isImageOnly) return;
 
   lastSeenTimestamp.set(threadID, Math.max(lastSeen, ts));
 
   const msgId = msg.message_id ?? `${threadID}-${ts}`;
-  await handleMessage(threadID, threadType, body, msg.message_sender?.name ?? "người dùng", senderId, msgId);
+  await handleMessage(
+    threadID,
+    threadType,
+    isImageOnly ? "[Người dùng gửi một hình ảnh. Nếu không xem được ảnh, hãy hỏi họ mô tả thêm.]" : body,
+    msg.message_sender?.name ?? "người dùng",
+    senderId,
+    msgId
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -265,7 +287,7 @@ async function handleMessage(
 
   if (!botState.autoReplyEnabled) return;
   if (!body.trim()) return;
-  if (threadType === "GROUP" || threadType === "COMMUNITY") {
+  if (threadType !== "ONE_TO_ONE") {
     blog("info", { threadId, threadType }, "Skipping group/community thread (DM-only mode)");
     return;
   }

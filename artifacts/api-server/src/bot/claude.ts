@@ -9,7 +9,7 @@ import { logger } from "../lib/logger";
 //  3. GitHub Models free tier  →  set GITHUB_TOKEN
 //  4. Any OpenAI-compatible endpoint  →  set AI_BASE_URL + AI_API_KEY
 //
-// Railway deployment: use GITHUB_TOKEN (free) or ANTHROPIC_API_KEY (paid)
+// Railway deployment: use AI_BASE_URL + AI_API_KEY for 9Router or any OpenAI-compatible proxy.
 // ─────────────────────────────────────────────────────────────────────────
 
 const replitBaseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
@@ -18,6 +18,8 @@ const anthropicKey  = process.env["ANTHROPIC_API_KEY"];
 const githubToken   = process.env["GITHUB_TOKEN"] ?? process.env["GITHUB_PERSONAL_ACCESS_TOKEN"];
 const customBaseURL = process.env["AI_BASE_URL"];
 const customApiKey  = process.env["AI_API_KEY"];
+const AI_TIMEOUT_MS = Number(process.env["AI_TIMEOUT_MS"] ?? "12000");
+const AI_MAX_TOKENS = Number(process.env["AI_MAX_TOKENS"] ?? "500");
 
 // Model override — useful when switching between providers
 // GitHub Models: "claude-3-5-sonnet"  |  Anthropic: "claude-sonnet-4-5"
@@ -51,7 +53,7 @@ if (replitBaseURL && replitApiKey) {
 } else if (customBaseURL && customApiKey) {
   provider = "openai-compat";
   openaiClient = new OpenAI({ baseURL: customBaseURL, apiKey: customApiKey });
-  defaultModel = AI_MODEL ?? "claude-3-5-sonnet";
+  defaultModel = AI_MODEL ?? "cc/claude-opus-4-5-20251101";
   logger.info({ baseURL: customBaseURL }, "Claude: using custom OpenAI-compatible endpoint");
 } else {
   logger.warn(
@@ -63,6 +65,20 @@ if (replitBaseURL && replitApiKey) {
 
 const conversationHistory = new Map<string, { role: "user" | "assistant"; content: string }[]>();
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function getClaudeReply(
   threadId: string,
   userMessage: string,
@@ -70,7 +86,7 @@ export async function getClaudeReply(
 ): Promise<string> {
   const history = conversationHistory.get(threadId) ?? [];
   history.push({ role: "user", content: userMessage });
-  if (history.length > 20) history.splice(0, history.length - 20);
+  if (history.length > 10) history.splice(0, history.length - 10);
 
   logger.info({ threadId, model: defaultModel, provider }, "Calling AI API");
 
@@ -78,12 +94,12 @@ export async function getClaudeReply(
     let replyText: string;
 
     if (provider === "anthropic" && anthropicClient) {
-      const response = await anthropicClient.messages.create({
+      const response = await withTimeout(anthropicClient.messages.create({
         model: defaultModel,
-        max_tokens: 1024,
+        max_tokens: AI_MAX_TOKENS,
         system: systemPrompt,
         messages: history,
-      });
+      }), AI_TIMEOUT_MS, "AI API");
       const block = response.content[0];
       replyText = block.type === "text" ? block.text : "";
     } else if (openaiClient) {
@@ -91,11 +107,11 @@ export async function getClaudeReply(
         { role: "system", content: systemPrompt },
         ...history,
       ];
-      const response = await openaiClient.chat.completions.create({
+      const response = await withTimeout(openaiClient.chat.completions.create({
         model: defaultModel,
-        max_tokens: 1024,
+        max_tokens: AI_MAX_TOKENS,
         messages,
-      });
+      }), AI_TIMEOUT_MS, "AI API");
       replyText = response.choices[0]?.message?.content ?? "";
     } else {
       throw new Error("No AI client configured");
