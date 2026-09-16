@@ -2,6 +2,7 @@
 import OpenAI from "openai";
 import { logger } from "../lib/logger";
 import { botState } from "./state";
+import { getUserAiConfig, GEMINI_BASE_URL } from "../lib/adminAuth";
 
 // ── Static fallback clients (Replit / Anthropic / GitHub) ────────────────
 const replitBaseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
@@ -45,7 +46,20 @@ interface ResolvedClient {
   maxTokens: number;
 }
 
-function resolveClient(): ResolvedClient {
+function resolveClient(threadId?: string): ResolvedClient {
+  // Per-user Gemini config takes highest priority
+  if (threadId) {
+    const userConfig = getUserAiConfig(threadId);
+    if (userConfig && userConfig.accessToken) {
+      return {
+        provider: "openai-compat",
+        openaiClient: new OpenAI({ baseURL: GEMINI_BASE_URL, apiKey: userConfig.accessToken }),
+        model: userConfig.model,
+        timeoutMs: botState.aiTimeoutMs,
+        maxTokens: botState.aiMaxTokens,
+      };
+    }
+  }
   const dynamicBaseUrl = botState.aiBaseUrl;
   const dynamicApiKey  = botState.aiApiKey;
   if (dynamicBaseUrl && dynamicApiKey) {
@@ -91,7 +105,7 @@ export async function getClaudeReply(
   history.push({ role: "user", content: userMessage });
   if (history.length > 10) history.splice(0, history.length - 10);
 
-  const { provider, anthropicClient, openaiClient, model, timeoutMs, maxTokens } = resolveClient();
+  const { provider, anthropicClient, openaiClient, model, timeoutMs, maxTokens } = resolveClient(threadId);
   logger.info({ threadId, model, provider }, "Calling AI API");
 
   try {

@@ -9,7 +9,7 @@ import { logger } from "./lib/logger";
 import { botState } from "./bot/state";
 import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUsed,
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GEMINI_BASE_URL, GEMINI_DEFAULT_MODEL,
-  createOAuthState, consumeOAuthState } from "./lib/adminAuth";
+  createOAuthState, consumeOAuthState, setUserAiConfig } from "./lib/adminAuth";
 
 const app: Express = express();
 
@@ -57,8 +57,21 @@ const GEMINI_SCOPES = "https://www.googleapis.com/auth/generative-language";
 
 app.get("/connect/gemini", (req: Request, res: Response) => {
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
-  const isAdmin = ADMIN_TOKEN && adminCookie === ADMIN_TOKEN;
-  if (!isAdmin) { res.status(401).send("Yeu cau dang nhap admin."); return; }
+  const isAdmin = !!(ADMIN_TOKEN && adminCookie === ADMIN_TOKEN);
+  const userTokenId = req.query["userToken"] as string | undefined;
+
+  // Validate access: either admin or valid user token
+  if (!isAdmin) {
+    if (!userTokenId) { res.status(401).send("Yeu cau dang nhap admin hoac co link hop le."); return; }
+    const ut = getUserToken(userTokenId);
+    if (!ut || ut.expiresAt < Date.now() || ut.usedAt) {
+      res.status(403).send("Link het han hoac da duoc su dung roi."); return;
+    }
+    // User token must have fbThreadId for Gemini flow
+    if (!ut.fbThreadId) {
+      res.status(400).send("Link nay khong ho tro ket noi Gemini (thieu fbThreadId)."); return;
+    }
+  }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -72,7 +85,9 @@ app.get("/connect/gemini", (req: Request, res: Response) => {
     return;
   }
 
-  const state = createOAuthState(true);
+  const ut = userTokenId ? getUserToken(userTokenId) : undefined;
+  const threadId = ut?.fbThreadId;
+  const state = createOAuthState(isAdmin, threadId, userTokenId);
   const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -121,17 +136,45 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
     };
     if (!tokens.access_token) throw new Error("Khong co access_token trong response");
 
-    // Gemini OpenAI-compatible endpoint uses OAuth Bearer token as API key
-    botState.aiBaseUrl = GEMINI_BASE_URL;
-    botState.aiApiKey = tokens.access_token;
-    botState.aiModel = GEMINI_DEFAULT_MODEL;
-    if (tokens.refresh_token) {
-      (botState as any)._geminiRefreshToken = tokens.refresh_token;
-      (botState as any)._geminiTokenExpiry = Date.now() + tokens.expires_in * 1000;
-    }
+    const { isAdmin, threadId, userTokenId } = stateData;
 
-    logger.info({ model: botState.aiModel }, "Gemini connected via OAuth");
-    res.redirect("/admin?geminiOk=1");
+    if (threadId) {
+      // Per-user flow: save to UserAiConfig keyed by FB thread ID
+      setUserAiConfig({
+        threadId,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiry: Date.now() + tokens.expires_in * 1000,
+        model: GEMINI_DEFAULT_MODEL,
+        connectedAt: Date.now(),
+      });
+      if (userTokenId) markUserTokenUsed(userTokenId, "gemini-oauth");
+      const ut = userTokenId ? getUserToken(userTokenId) : undefined;
+      const redirectUrl = ut?.redirectUrl || "/";
+      logger.info({ threadId, model: GEMINI_DEFAULT_MODEL }, "Gemini connected per-user via OAuth");
+      // Show success page
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;padding:2rem;text-align:center">
+        <div style="font-size:3rem">✅</div>
+        <h2 style="color:#4ade80">Da ket noi Gemini thanh cong!</h2>
+        <p style="color:#94a3b8">Bot se su dung Gemini cua ban de tra loi tin nhan tu bay gio.</p>
+        <p style="color:#64748b;font-size:.85rem">Model: <strong style="color:#818cf8">${GEMINI_DEFAULT_MODEL}</strong></p>
+        ${redirectUrl && redirectUrl !== "/" ? `<a href="${redirectUrl}" style="margin-top:.5rem;color:#6366f1;text-decoration:none">Tiep tuc &rarr;</a>` : ""}
+      </body></html>`);
+    } else if (isAdmin) {
+      // Admin flow: set global botState (legacy)
+      botState.aiBaseUrl = GEMINI_BASE_URL;
+      botState.aiApiKey = tokens.access_token;
+      botState.aiModel = GEMINI_DEFAULT_MODEL;
+      if (tokens.refresh_token) {
+        (botState as any)._geminiRefreshToken = tokens.refresh_token;
+        (botState as any)._geminiTokenExpiry = Date.now() + tokens.expires_in * 1000;
+      }
+      logger.info({ model: botState.aiModel }, "Gemini connected via OAuth (admin global)");
+      res.redirect("/admin?geminiOk=1");
+    } else {
+      res.status(400).send("Khong xac dinh duoc nguoi dung.");
+    }
   } catch (err: any) {
     logger.error({ err: err?.message }, "Gemini OAuth callback failed");
     res.redirect(`/admin?geminiErr=${encodeURIComponent(err?.message ?? "unknown")}`);

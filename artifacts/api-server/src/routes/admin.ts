@@ -150,16 +150,16 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const tokenRows = tokens.length === 0
     ? `<tr><td colspan="7" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co link nao.</td></tr>`
     : tokens.map(t => {
-        const link = `${baseOrigin}/connect/9router?userToken=${t.id}`;
+        const geminiLink = `${baseOrigin}/connect/gemini?userToken=${t.id}`;
         const ttlLeft = Math.max(0, Math.round((t.expiresAt - Date.now()) / 60000));
-        const accName = accMap.get(t.aiAccountId)?.name ?? `<span style="color:#f87171">?</span>`;
+        const accName = t.aiAccountId ? (accMap.get(t.aiAccountId)?.name ?? `<span style="color:#f87171">?</span>`) : `<span style="color:#64748b">Gemini OAuth</span>`;
         return `<tr>
-          <td><div style="font-weight:600;color:#e2e8f0">${t.label}</div><div style="font-size:.7rem;color:#4b5563">${fmtDate(t.createdAt)}</div></td>
+          <td><div style="font-weight:600;color:#e2e8f0">${t.label}</div><div style="font-size:.7rem;color:#4b5563">${fmtDate(t.createdAt)}</div><div style="font-size:.7rem;color:#818cf8">Thread: ${t.fbThreadId || "-"}</div></td>
           <td>${tokenStatus(t)}</td>
           <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Het han" : `Con ${ttlLeft} phut`)}</td>
           <td style="color:#94a3b8;font-size:.8rem">${accName}</td>
           <td style="color:#e2e8f0;max-width:140px;word-break:break-all">${t.usedByLabel ? `<span style="color:#4ade80">${t.usedByLabel}</span>` : `<span style="color:#4b5563">-</span>`}</td>
-          <td class="mono" style="max-width:260px"><div class="link-box">${link}</div></td>
+          <td class="mono" style="max-width:260px"><div class="link-box">${geminiLink}</div></td>
           <td><form method="POST" action="/admin/links/delete" style="display:inline"><input type="hidden" name="id" value="${t.id}" /><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td>
         </tr>`;
       }).join("");
@@ -211,13 +211,13 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         </form>
       </details>
       <div class="sep"></div>
-      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link ket noi cho nguoi dung</h2>
+      <h2 style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link ket noi Gemini cho nguoi dung</h2>
       <form method="POST" action="/admin/links/create" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end">
         <div><label>Nhan (ten nguoi dung)</label><input name="label" placeholder="Khach hang A" required /></div>
-        <div><label>Tai khoan AI</label><select name="aiAccountId" required>${accOptions}</select></div>
-        <div><label>Redirect sau khi ket noi</label><input name="redirectUrl" value="${baseOrigin}/ai-config" /></div>
+        <div><label>FB Thread ID (ID cuoc tro chuyen)</label><input name="fbThreadId" placeholder="1234567890" required title="Lay tu URL facebook.com/messages/t/[ID]" /></div>
+        <div><label>Tai khoan AI (tuy chon)</label><select name="aiAccountId"><option value="">- Khong chon (dung Gemini OAuth) -</option>${accOptions}</select></div>
         <div><label>Hieu luc</label><select name="ttlHours"><option value="1">1 gio</option><option value="6">6 gio</option><option value="24" selected>24 gio</option><option value="72">3 ngay</option><option value="168">7 ngay</option></select></div>
-        <div style="grid-column:1/-1"><button class="btn btn-primary" style="width:100%" ${accounts.length === 0 ? "disabled" : ""}>Tao link</button></div>
+        <div style="grid-column:1/-1"><button class="btn btn-primary" style="width:100%">Tao link Gemini</button></div>
       </form>
       <div class="sep"></div>
       <h2 style="font-size:1rem;margin-bottom:.5rem;color:#f1f5f9">Danh sach link (${tokens.length})</h2>
@@ -240,12 +240,12 @@ router.post("/admin/accounts/delete", requireAdmin, (req: Request, res: Response
 });
 
 router.post("/admin/links/create", requireAdmin, (req: Request, res: Response) => {
-  const { label, ttlHours, redirectUrl, aiAccountId } = req.body as { label?: string; ttlHours?: string; redirectUrl?: string; aiAccountId?: string };
-  if (!aiAccountId) { res.status(400).send("Phai chon tai khoan AI."); return; }
+  const { label, ttlHours, redirectUrl, aiAccountId, fbThreadId } = req.body as { label?: string; ttlHours?: string; redirectUrl?: string; aiAccountId?: string; fbThreadId?: string };
+  if (!fbThreadId?.trim()) { res.status(400).send("Phai nhap FB Thread ID."); return; }
   const safeLabel = (label ?? "User").slice(0, 80);
   const ttl = Math.min(Math.max(Number(ttlHours ?? 24), 1), 720);
-  const redirect = (redirectUrl ?? "").trim() || `${req.protocol}://${req.get("host")}/ai-config`;
-  createUserToken({ label: safeLabel, aiAccountId, ttlHours: ttl, redirectUrl: redirect });
+  const redirect = (redirectUrl ?? "").trim() || `${req.protocol}://${req.get("host")}/`;
+  createUserToken({ label: safeLabel, aiAccountId: aiAccountId ?? "", fbThreadId: fbThreadId.trim(), ttlHours: ttl, redirectUrl: redirect });
   res.redirect("/admin?created=1");
 });
 

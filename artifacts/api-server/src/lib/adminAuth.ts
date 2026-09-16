@@ -13,21 +13,21 @@ export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta
 export const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
 
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
-const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean }>();
+const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; threadId?: string; userTokenId?: string }>();
 
-export function createOAuthState(isAdmin: boolean): string {
+export function createOAuthState(isAdmin: boolean, threadId?: string, userTokenId?: string): string {
   const state = randomUUID();
-  oauthStates.set(state, { createdAt: Date.now(), isAdmin });
+  oauthStates.set(state, { createdAt: Date.now(), isAdmin, threadId, userTokenId });
   return state;
 }
 
-export function consumeOAuthState(state: string): { isAdmin: boolean } | undefined {
+export function consumeOAuthState(state: string): { isAdmin: boolean; threadId?: string; userTokenId?: string } | undefined {
   const s = oauthStates.get(state);
   if (!s) return undefined;
   oauthStates.delete(state);
   // expire after 10 min
   if (Date.now() - s.createdAt > 600_000) return undefined;
-  return { isAdmin: s.isAdmin };
+  return { isAdmin: s.isAdmin, threadId: s.threadId, userTokenId: s.userTokenId };
 }
 
 // cleanup every 10 min
@@ -74,6 +74,7 @@ export interface UserToken {
   id: string;
   label: string;
   aiAccountId: string;
+  fbThreadId: string;   // FB thread ID to bind Gemini token to (required for Gemini flow)
   createdAt: number;
   expiresAt: number;
   usedAt: number | null;
@@ -83,11 +84,11 @@ export interface UserToken {
 
 const userTokens = new Map<string, UserToken>();
 
-export function createUserToken(opts: { label: string; aiAccountId: string; ttlHours: number; redirectUrl: string }): UserToken {
+export function createUserToken(opts: { label: string; aiAccountId: string; fbThreadId: string; ttlHours: number; redirectUrl: string }): UserToken {
   const id = randomUUID();
   const now = Date.now();
   const token: UserToken = {
-    id, label: opts.label, aiAccountId: opts.aiAccountId,
+    id, label: opts.label, aiAccountId: opts.aiAccountId, fbThreadId: opts.fbThreadId,
     createdAt: now, expiresAt: now + opts.ttlHours * 3_600_000,
     usedAt: null, usedByLabel: "", redirectUrl: opts.redirectUrl,
   };
@@ -114,6 +115,34 @@ setInterval(() => {
   const now = Date.now();
   for (const [id, t] of userTokens.entries()) { if (t.expiresAt < now) userTokens.delete(id); }
 }, 600_000);
+
+// ── Per-user Gemini AI config (keyed by FB thread ID) ────────────────────────
+export interface UserAiConfig {
+  threadId: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenExpiry: number;   // epoch ms
+  model: string;
+  connectedAt: number;
+}
+
+const userAiConfigs = new Map<string, UserAiConfig>();
+
+export function setUserAiConfig(config: UserAiConfig): void {
+  userAiConfigs.set(config.threadId, config);
+}
+
+export function getUserAiConfig(threadId: string): UserAiConfig | undefined {
+  return userAiConfigs.get(threadId);
+}
+
+export function deleteUserAiConfig(threadId: string): void {
+  userAiConfigs.delete(threadId);
+}
+
+export function listUserAiConfigs(): UserAiConfig[] {
+  return [...userAiConfigs.values()].sort((a, b) => b.connectedAt - a.connectedAt);
+}
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
