@@ -7,7 +7,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, ''Segoe UI'', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #0a0a0a;
       color: #e5e5e5;
       min-height: 100vh;
@@ -48,7 +48,7 @@
       width: 100%; padding: 10px 12px;
       background: #0d0d0d; border: 1px solid #252525;
       border-radius: 8px; color: #e5e5e5;
-      font-size: 13px; font-family: ''SFMono-Regular'', Consolas, monospace;
+      font-size: 13px; font-family: 'SFMono-Regular', Consolas, monospace;
       outline: none; transition: border-color 0.15s;
     }
     input:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
@@ -99,70 +99,55 @@
       <div class="logo">&#x26A1;</div>
       <div class="app-name">Bot Control &rarr;</div>
       <h1>9Router AI Gateway</h1>
-      <div class="subtitle">Cap quyen de bot tu dong tra loi qua AI<br/>ma khong can cai dat lai khi restart.</div>
+      <div class="subtitle">Cap quyen de bot tu dong tra loi qua AI.</div>
     </div>
-
     <hr class="divider" />
-
     <ul class="scope-list">
       <li class="scope-item"><span class="scope-icon">&#x2713;</span>Goi API AI tao phan hoi tin nhan</li>
       <li class="scope-item"><span class="scope-icon">&#x2713;</span>Doc danh sach model co san</li>
       <li class="scope-item"><span class="scope-icon">&#x2713;</span>Khong luu tru du lieu nguoi dung</li>
     </ul>
-
     <div id="error-box" class="error-box"></div>
-
     <form id="form" method="POST" action="/connect/9router/authorize">
       <input type="hidden" name="redirect" value="{{REDIRECT}}" />
-
+      <input type="hidden" name="userToken" value="{{USER_TOKEN}}" />
       <div class="info-box">
         <strong>Base URL tu dong phat hien:</strong><br />
         <code>{{BASE_URL_HINT}}</code>
       </div>
-
       <div class="field">
         <label>Base URL</label>
         <input name="baseUrl" type="text" value="{{BASE_URL_DEFAULT}}" placeholder="http://localhost:20128/v1" required />
       </div>
-
       <div class="field">
         <label>API Key (tu dashboard 9Router)</label>
         <input name="apiKey" id="apiKey" type="password" placeholder="Paste key o day..." required />
       </div>
-
       <div class="field">
         <label>Model (de trong = mac dinh)</label>
         <input name="model" type="text" value="cc/claude-opus-4-5-20251101" placeholder="cc/claude-opus-4-5-20251101" />
       </div>
-
       <button class="btn-primary" id="btn" type="submit">
         &#x26A1; Cap quyen &amp; Ket noi 9Router
       </button>
-      <button class="btn-cancel" type="button" onclick="if(window.opener){window.close();}else{history.back();}">
-        Huy
-      </button>
+      <button class="btn-cancel" type="button" onclick="if(window.opener){window.close();}else{history.back();}">Huy</button>
     </form>
-
     <div class="footer">WolfMod Bot &bull; 9Router AI Gateway</div>
   </div>
-
   <script>
-    // Show error from query string
-    const params = new URLSearchParams(location.search);
-    const err = params.get(''error'');
+    var params = new URLSearchParams(location.search);
+    var err = params.get('error');
     if (err) {
-      const box = document.getElementById(''error-box'');
-      box.style.display = ''block'';
-      box.textContent = ''Loi ket noi: '' + decodeURIComponent(err);
+      var box = document.getElementById('error-box');
+      box.style.display = 'block';
+      box.textContent = 'Loi ket noi: ' + decodeURIComponent(err);
     }
-    // Autofocus API key
-    document.getElementById(''apiKey'').focus();
-    // Loading state
-    const form = document.getElementById(''form'');
-    const btn = document.getElementById(''btn'');
-    form.addEventListener(''submit'', () => {
+    document.getElementById('apiKey').focus();
+    var form = document.getElementById('form');
+    var btn = document.getElementById('btn');
+    form.addEventListener('submit', function() {
       btn.disabled = true;
-      btn.innerHTML = ''<div class="spinner"></div> Dang xac thuc...'';
+      btn.innerHTML = '<div class="spinner"></div> Dang xac thuc...';
     });
   </script>
 </body>
