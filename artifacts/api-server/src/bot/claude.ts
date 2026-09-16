@@ -1,66 +1,69 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { logger } from "../lib/logger";
+import { botState } from "./state";
 
-// ── API configuration ─────────────────────────────────────────────────────
-// Priority order:
-//  1. Replit AI integration proxy (Replit only)
-//  2. Direct Anthropic API key
-//  3. GitHub Models free tier  →  set GITHUB_TOKEN
-//  4. Any OpenAI-compatible endpoint  →  set AI_BASE_URL + AI_API_KEY
-//
-// Railway deployment: use AI_BASE_URL + AI_API_KEY for 9Router or any OpenAI-compatible proxy.
-// ─────────────────────────────────────────────────────────────────────────
-
+// ── Static fallback clients (Replit / Anthropic / GitHub) ────────────────
 const replitBaseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
 const replitApiKey  = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
 const anthropicKey  = process.env["ANTHROPIC_API_KEY"];
 const githubToken   = process.env["GITHUB_TOKEN"] ?? process.env["GITHUB_PERSONAL_ACCESS_TOKEN"];
-const customBaseURL = process.env["AI_BASE_URL"];
-const customApiKey  = process.env["AI_API_KEY"];
-const AI_TIMEOUT_MS = Number(process.env["AI_TIMEOUT_MS"] ?? "12000");
-const AI_MAX_TOKENS = Number(process.env["AI_MAX_TOKENS"] ?? "500");
 
-// Model override — useful when switching between providers
-// GitHub Models: "claude-3-5-sonnet"  |  Anthropic: "claude-sonnet-4-5"
-const AI_MODEL = process.env["AI_MODEL"];
+type Provider = "anthropic" | "openai-compat" | "none";
 
-type Provider = "anthropic" | "openai-compat";
-
-let provider: Provider;
-let anthropicClient: Anthropic | undefined;
-let openaiClient: OpenAI | undefined;
-let defaultModel: string;
+let staticProvider: Provider = "none";
+let staticAnthropicClient: Anthropic | undefined;
+let staticOpenaiClient: OpenAI | undefined;
+let staticDefaultModel = "claude-sonnet-4-6";
 
 if (replitBaseURL && replitApiKey) {
-  provider = "anthropic";
-  anthropicClient = new Anthropic({ baseURL: replitBaseURL, apiKey: replitApiKey });
-  defaultModel = AI_MODEL ?? "claude-sonnet-4-6";
+  staticProvider = "anthropic";
+  staticAnthropicClient = new Anthropic({ baseURL: replitBaseURL, apiKey: replitApiKey });
+  staticDefaultModel = process.env["AI_MODEL"] ?? "claude-sonnet-4-6";
   logger.info("Claude: using Replit AI integration proxy");
 } else if (anthropicKey) {
-  provider = "anthropic";
-  anthropicClient = new Anthropic({ apiKey: anthropicKey });
-  defaultModel = AI_MODEL ?? "claude-sonnet-4-6";
+  staticProvider = "anthropic";
+  staticAnthropicClient = new Anthropic({ apiKey: anthropicKey });
+  staticDefaultModel = process.env["AI_MODEL"] ?? "claude-sonnet-4-6";
   logger.info("Claude: using direct Anthropic API");
 } else if (githubToken) {
-  provider = "openai-compat";
-  openaiClient = new OpenAI({
-    baseURL: "https://models.inference.ai.azure.com",
-    apiKey: githubToken,
-  });
-  defaultModel = AI_MODEL ?? "gpt-4o-mini";
-  logger.info({ model: AI_MODEL ?? "gpt-4o-mini" }, "Claude: using GitHub Models free tier");
-} else if (customBaseURL && customApiKey) {
-  provider = "openai-compat";
-  openaiClient = new OpenAI({ baseURL: customBaseURL, apiKey: customApiKey });
-  defaultModel = AI_MODEL ?? "cc/claude-opus-4-5-20251101";
-  logger.info({ baseURL: customBaseURL }, "Claude: using custom OpenAI-compatible endpoint");
+  staticProvider = "openai-compat";
+  staticOpenaiClient = new OpenAI({ baseURL: "https://models.inference.ai.azure.com", apiKey: githubToken });
+  staticDefaultModel = process.env["AI_MODEL"] ?? "gpt-4o-mini";
+  logger.info("Claude: using GitHub Models free tier");
 } else {
-  logger.warn(
-    "Chưa cấu hình AI. Thêm một trong: GITHUB_TOKEN, ANTHROPIC_API_KEY, hoặc AI_BASE_URL + AI_API_KEY. Bot sẽ không trả lời tin nhắn."
-  );
-  provider = "anthropic" as Provider;
-  defaultModel = "claude-sonnet-4-6";
+  logger.warn("Chua cau hinh AI tinh. Bot se dung cau hinh 9Router tu botState.");
+}
+
+// ── Resolve AI client — dynamic (botState) takes priority over static ────
+interface ResolvedClient {
+  provider: Provider;
+  anthropicClient?: Anthropic;
+  openaiClient?: OpenAI;
+  model: string;
+  timeoutMs: number;
+  maxTokens: number;
+}
+
+function resolveClient(): ResolvedClient {
+  const dynamicBaseUrl = botState.aiBaseUrl;
+  const dynamicApiKey  = botState.aiApiKey;
+  if (dynamicBaseUrl && dynamicApiKey) {
+    return {
+      provider: "openai-compat",
+      openaiClient: new OpenAI({ baseURL: dynamicBaseUrl, apiKey: dynamicApiKey }),
+      model: botState.aiModel,
+      timeoutMs: botState.aiTimeoutMs,
+      maxTokens: botState.aiMaxTokens,
+    };
+  }
+  if (staticProvider === "anthropic" && staticAnthropicClient) {
+    return { provider: "anthropic", anthropicClient: staticAnthropicClient, model: staticDefaultModel, timeoutMs: 12000, maxTokens: 500 };
+  }
+  if (staticProvider === "openai-compat" && staticOpenaiClient) {
+    return { provider: "openai-compat", openaiClient: staticOpenaiClient, model: staticDefaultModel, timeoutMs: 12000, maxTokens: 500 };
+  }
+  return { provider: "none", model: staticDefaultModel, timeoutMs: 12000, maxTokens: 500 };
 }
 
 const conversationHistory = new Map<string, { role: "user" | "assistant"; content: string }[]>();
@@ -88,43 +91,44 @@ export async function getClaudeReply(
   history.push({ role: "user", content: userMessage });
   if (history.length > 10) history.splice(0, history.length - 10);
 
-  logger.info({ threadId, model: defaultModel, provider }, "Calling AI API");
+  const { provider, anthropicClient, openaiClient, model, timeoutMs, maxTokens } = resolveClient();
+  logger.info({ threadId, model, provider }, "Calling AI API");
 
   try {
     let replyText: string;
 
     if (provider === "anthropic" && anthropicClient) {
       const response = await withTimeout(anthropicClient.messages.create({
-        model: defaultModel,
-        max_tokens: AI_MAX_TOKENS,
+        model,
+        max_tokens: maxTokens,
         system: systemPrompt,
         messages: history,
-      }), AI_TIMEOUT_MS, "AI API");
+      }), timeoutMs, "AI API");
       const block = response.content[0];
       replyText = block.type === "text" ? block.text : "";
     } else if (openaiClient) {
-      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
         ...history,
       ];
       const response = await withTimeout(openaiClient.chat.completions.create({
-        model: defaultModel,
-        max_tokens: AI_MAX_TOKENS,
-        messages,
-      }), AI_TIMEOUT_MS, "AI API");
+        model,
+        max_tokens: maxTokens,
+        messages: msgs,
+      }), timeoutMs, "AI API");
       replyText = response.choices[0]?.message?.content ?? "";
     } else {
-      throw new Error("No AI client configured");
+      throw new Error("No AI client configured. Add AI_BASE_URL + AI_API_KEY or use AI Config page.");
     }
 
-    logger.info({ threadId, replyLen: replyText.length }, "AI API success");
+    logger.info({ threadId, model, replyLen: replyText.length }, "AI API success");
     history.push({ role: "assistant", content: replyText });
     conversationHistory.set(threadId, history);
     return replyText;
   } catch (err: any) {
     const errMsg = err?.message ?? String(err);
     const statusCode = err?.status ?? err?.statusCode ?? null;
-    logger.error({ err: errMsg, statusCode, threadId, model: defaultModel, provider }, "AI API error");
+    logger.error({ err: errMsg, statusCode, threadId, model, provider }, "AI API error");
     throw err;
   }
 }

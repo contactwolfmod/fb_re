@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+﻿import { Router, type IRouter } from "express";
 import { botState } from "../bot/state";
 import { startBot, stopBot, submit2FACode, TwoFactorRequired } from "../bot/facebook";
 import { clearConversation } from "../bot/claude";
@@ -35,7 +35,7 @@ function cookieStringToAppState(cookieStr: string): any[] {
 }
 
 /**
- * Parse AppState from user input — accepts:
+ * Parse AppState from user input â€” accepts:
  *   1. JSON array (fca-unofficial native format)
  *   2. Cookie string "c_user=xxx; xs=xxx; ..."
  */
@@ -46,14 +46,14 @@ function parseAppState(raw: string): { parsed: any[]; error?: string } {
     try {
       const parsed = JSON.parse(trimmed);
       if (!Array.isArray(parsed)) {
-        return { parsed: [], error: "AppState phải là một JSON array" };
+        return { parsed: [], error: "AppState pháº£i lÃ  má»™t JSON array" };
       }
       if (parsed.length === 0) {
-        return { parsed: [], error: "AppState array không được rỗng" };
+        return { parsed: [], error: "AppState array khÃ´ng Ä‘Æ°á»£c rá»—ng" };
       }
       return { parsed };
     } catch (e: any) {
-      return { parsed: [], error: "JSON không hợp lệ: " + e.message };
+      return { parsed: [], error: "JSON khÃ´ng há»£p lá»‡: " + e.message };
     }
   }
 
@@ -62,14 +62,14 @@ function parseAppState(raw: string): { parsed: any[]; error?: string } {
       const obj = JSON.parse(trimmed);
       return { parsed: [obj] };
     } catch (e: any) {
-      return { parsed: [], error: "JSON object không hợp lệ: " + e.message };
+      return { parsed: [], error: "JSON object khÃ´ng há»£p lá»‡: " + e.message };
     }
   }
 
   if (trimmed.includes("=")) {
     const converted = cookieStringToAppState(trimmed);
     if (converted.length === 0) {
-      return { parsed: [], error: "Không thể đọc cookie string" };
+      return { parsed: [], error: "KhÃ´ng thá»ƒ Ä‘á»c cookie string" };
     }
     logger.info({ count: converted.length }, "Converted cookie string to AppState");
     return { parsed: converted };
@@ -78,7 +78,7 @@ function parseAppState(raw: string): { parsed: any[]; error?: string } {
   return {
     parsed: [],
     error:
-      'Định dạng không hợp lệ. Cần JSON array ([{...},...]) hoặc cookie string (c_user=xxx; xs=xxx; ...)',
+      'Äá»‹nh dáº¡ng khÃ´ng há»£p lá»‡. Cáº§n JSON array ([{...},...]) hoáº·c cookie string (c_user=xxx; xs=xxx; ...)',
   };
 }
 
@@ -119,13 +119,13 @@ router.post("/bot/start", async (req, res) => {
       if (!keys.includes("xs")) {
         res.status(400).json({
           error:
-            "Cookie thiếu 'xs' — đây là cookie quan trọng nhất. Vui lòng copy lại đủ cookie từ DevTools (bao gồm xs, c_user, datr).",
+            "Cookie thiáº¿u 'xs' â€” Ä‘Ã¢y lÃ  cookie quan trá»ng nháº¥t. Vui lÃ²ng copy láº¡i Ä‘á»§ cookie tá»« DevTools (bao gá»“m xs, c_user, datr).",
         });
         return;
       }
       if (!keys.includes("c_user")) {
         res.status(400).json({
-          error: "Cookie thiếu 'c_user' (ID Facebook). Vui lòng copy lại đủ cookie.",
+          error: "Cookie thiáº¿u 'c_user' (ID Facebook). Vui lÃ²ng copy láº¡i Ä‘á»§ cookie.",
         });
         return;
       }
@@ -134,37 +134,37 @@ router.post("/bot/start", async (req, res) => {
     } else if (identifier && password) {
       await startBot({ type: "credentials", email: identifier.trim(), password });
     } else {
-      res.status(400).json({ error: "Vui lòng cung cấp email/SĐT/Facebook ID + password hoặc appState" });
+      res.status(400).json({ error: "Vui lÃ²ng cung cáº¥p email/SÄT/Facebook ID + password hoáº·c appState" });
       return;
     }
 
-    res.json({ success: true, message: "Bot đã kết nối thành công" });
+    res.json({ success: true, message: "Bot Ä‘Ã£ káº¿t ná»‘i thÃ nh cÃ´ng" });
   } catch (err: any) {
     if (err instanceof TwoFactorRequired || err?.name === "TwoFactorRequired") {
-      res.json({ success: true, requires_2fa: true, message: "Cần nhập mã xác minh 2FA để hoàn tất đăng nhập" });
+      res.json({ success: true, requires_2fa: true, message: "Cáº§n nháº­p mÃ£ xÃ¡c minh 2FA Ä‘á»ƒ hoÃ n táº¥t Ä‘Äƒng nháº­p" });
       return;
     }
-    res.status(500).json({ error: err.message ?? "Đăng nhập thất bại" });
+    res.status(500).json({ error: err.message ?? "ÄÄƒng nháº­p tháº¥t báº¡i" });
   }
 });
 
 router.post("/bot/2fa", async (req, res) => {
   const { code } = req.body as { code?: string };
   if (!code?.trim()) {
-    res.status(400).json({ error: "Vui lòng cung cấp mã xác minh 2FA" });
+    res.status(400).json({ error: "Vui lÃ²ng cung cáº¥p mÃ£ xÃ¡c minh 2FA" });
     return;
   }
   try {
     await submit2FACode(code.trim());
-    res.json({ success: true, message: "Xác minh 2FA thành công. Bot đã kết nối!" });
+    res.json({ success: true, message: "XÃ¡c minh 2FA thÃ nh cÃ´ng. Bot Ä‘Ã£ káº¿t ná»‘i!" });
   } catch (err: any) {
-    res.status(500).json({ error: err.message ?? "Xác minh 2FA thất bại" });
+    res.status(500).json({ error: err.message ?? "XÃ¡c minh 2FA tháº¥t báº¡i" });
   }
 });
 
 router.post("/bot/stop", (_req, res) => {
   stopBot();
-  res.json({ success: true, message: "Bot đã dừng" });
+  res.json({ success: true, message: "Bot Ä‘Ã£ dá»«ng" });
 });
 
 router.put("/bot/settings", (req, res) => {
@@ -190,7 +190,7 @@ router.put("/bot/settings", (req, res) => {
 router.post("/bot/ignore-thread", (req, res) => {
   const { threadId, ignore } = req.body as { threadId?: string; ignore?: boolean };
   if (!threadId) {
-    res.status(400).json({ error: "threadId là bắt buộc" });
+    res.status(400).json({ error: "threadId lÃ  báº¯t buá»™c" });
     return;
   }
   if (ignore === false) {
@@ -204,16 +204,28 @@ router.post("/bot/ignore-thread", (req, res) => {
 router.post("/bot/clear-conversation", (req, res) => {
   const { threadId } = req.body as { threadId?: string };
   if (!threadId) {
-    res.status(400).json({ error: "threadId là bắt buộc" });
+    res.status(400).json({ error: "threadId lÃ  báº¯t buá»™c" });
     return;
   }
   clearConversation(threadId);
-  res.json({ success: true, message: "Đã xóa lịch sử trò chuyện" });
+  res.json({ success: true, message: "ÄÃ£ xÃ³a lá»‹ch sá»­ trÃ² chuyá»‡n" });
 });
 
 router.get("/bot/logs", (req, res) => {
   const since = req.query.since ? Number(req.query.since) : undefined;
   res.json({ logs: getRecentLogs(since) });
+});
+
+
+router.put('/bot/ai-config', (req, res) => {
+  const body = req.body;
+  if (body.baseUrl !== undefined) botState.aiBaseUrl = body.baseUrl;
+  if (body.apiKey !== undefined) botState.aiApiKey = body.apiKey;
+  if (body.model !== undefined) botState.aiModel = body.model;
+  if (body.timeoutMs !== undefined) botState.aiTimeoutMs = Number(body.timeoutMs);
+  if (body.maxTokens !== undefined) botState.aiMaxTokens = Number(body.maxTokens);
+  logger.info({ baseUrl: botState.aiBaseUrl, model: botState.aiModel }, 'AI config updated via dashboard');
+  res.json({ success: true, aiBaseUrl: botState.aiBaseUrl, aiModel: botState.aiModel, aiTimeoutMs: botState.aiTimeoutMs, aiMaxTokens: botState.aiMaxTokens });
 });
 
 export default router;

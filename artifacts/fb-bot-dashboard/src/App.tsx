@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Settings from "@/pages/settings";
+import AiConfig from "@/pages/ai-config";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient({
@@ -22,6 +23,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/settings" component={Settings} />
+        <Route path="/ai-config" component={AiConfig} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

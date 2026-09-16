@@ -8,6 +8,11 @@ export interface BotState {
   systemPrompt: string;
   autoReplyEnabled: boolean;
   ignoredThreadIds: Set<string>;
+  aiBaseUrl: string;
+  aiApiKey: string;
+  aiModel: string;
+  aiTimeoutMs: number;
+  aiMaxTokens: number;
 }
 
 const DEFAULT_PROMPT =
@@ -21,4 +26,9 @@ export const botState: BotState = {
   systemPrompt: process.env["SYSTEM_PROMPT"] ?? DEFAULT_PROMPT,
   autoReplyEnabled: true,
   ignoredThreadIds: new Set(),
+  aiBaseUrl: process.env["AI_BASE_URL"] ?? "",
+  aiApiKey: process.env["AI_API_KEY"] ?? "",
+  aiModel: process.env["AI_MODEL"] ?? "cc/claude-opus-4-5-20251101",
+  aiTimeoutMs: Number(process.env["AI_TIMEOUT_MS"] ?? "12000"),
+  aiMaxTokens: Number(process.env["AI_MAX_TOKENS"] ?? "500"),
 };

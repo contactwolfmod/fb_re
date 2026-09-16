@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Bot, Settings, MessageSquare, ShieldAlert, Menu, X } from "lucide-react";
+import { Bot, Settings, MessageSquare, ShieldAlert, Menu, X, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -18,6 +18,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { href: "/", label: "Dashboard", icon: Bot },
     { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/ai-config", label: "AI Config", icon: Cpu },
   ];
 
   const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => (
