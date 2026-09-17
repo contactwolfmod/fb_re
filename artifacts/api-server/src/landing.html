@@ -5,29 +5,29 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>WolfMod Bot - AI Facebook Messenger</title>
 <style>
-:root{--bg:#06080f;--card:rgba(15,18,30,.72);--border:rgba(99,102,241,.12);--accent:#6366f1;--accent2:#a78bfa;--text:#e8ecf4;--muted:#7b8aa8;--glass:rgba(255,255,255,.04)}
+:root{--bg:#070b18;--card:rgba(12,18,38,.75);--border:rgba(59,130,246,.12);--accent:#3b82f6;--accent2:#f59e0b;--text:#e8ecf4;--muted:#7b8aa8;--glass:rgba(255,255,255,.04)}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
 body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden}
 .bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none}
 .bg-mesh .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.3;animation:drift 18s ease-in-out infinite alternate}
-.orb-1{width:600px;height:600px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-10%;left:-8%}
-.orb-2{width:500px;height:500px;background:radial-gradient(circle,#a78bfa,transparent 70%);bottom:5%;right:-5%;animation-delay:-6s}
-.orb-3{width:400px;height:400px;background:radial-gradient(circle,#22d3ee,transparent 70%);top:40%;left:50%;animation-delay:-12s}
+.orb-1{width:600px;height:600px;background:radial-gradient(circle,#3b82f6,transparent 70%);top:-10%;left:-8%}
+.orb-2{width:500px;height:500px;background:radial-gradient(circle,#f59e0b,transparent 70%);bottom:5%;right:-5%;animation-delay:-6s}
+.orb-3{width:400px;height:400px;background:radial-gradient(circle,#60a5fa,transparent 70%);top:40%;left:50%;animation-delay:-12s}
 @keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.12)}100%{transform:translate(-30px,20px) scale(.95)}}
-.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(99,102,241,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.04) 1px,transparent 1px);background-size:60px 60px}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px) saturate(1.4);background:rgba(6,8,15,.65);border-bottom:1px solid rgba(99,102,241,.08);padding:0 clamp(1rem,4vw,3rem);height:64px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .3s}
+.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);background-size:60px 60px}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px) saturate(1.4);background:rgba(6,8,15,.65);border-bottom:1px solid rgba(59,130,246,.08);padding:0 clamp(1rem,4vw,3rem);height:64px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .3s}
 nav.scrolled{box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .logo{font-weight:800;font-size:1.15rem;color:#fff;text-decoration:none;letter-spacing:-.02em}
 .logo b{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .nav-links{display:flex;align-items:center;gap:clamp(.8rem,2vw,2rem)}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;transition:color .2s}
 .nav-links a:hover{color:#fff}
-.nav-cta{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff!important;padding:.5rem 1.2rem;border-radius:9px;font-weight:700;font-size:.85rem!important;box-shadow:0 0 20px rgba(99,102,241,.3);transition:transform .15s,box-shadow .15s}
-.nav-cta:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(99,102,241,.5)}
+.nav-cta{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff!important;padding:.5rem 1.2rem;border-radius:9px;font-weight:700;font-size:.85rem!important;box-shadow:0 0 20px rgba(59,130,246,.3);transition:transform .15s,box-shadow .15s}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(59,130,246,.5)}
 .lang-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;padding:.35rem .7rem;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
 .lang-btn:hover{background:rgba(255,255,255,.15)}.hero{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:3rem;padding:7rem clamp(2rem,6vw,6rem) 4rem}
 .hero-text{max-width:580px}
-.hero-tag{display:inline-block;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(167,139,250,.15));border:1px solid rgba(99,102,241,.25);border-radius:99px;padding:.4rem 1.1rem;font-size:.78rem;font-weight:600;color:var(--accent2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:1.5rem;animation:fadeUp .8s .1s both}
+.hero-tag{display:inline-block;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(245,158,11,.15));border:1px solid rgba(59,130,246,.25);border-radius:99px;padding:.4rem 1.1rem;font-size:.78rem;font-weight:600;color:var(--accent2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:1.5rem;animation:fadeUp .8s .1s both}
 .hero-tag .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:8px;animation:pulse-dot 2s infinite}
 @keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
 .hero h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:900;line-height:1.08;letter-spacing:-.03em;margin-bottom:1.2rem;animation:fadeUp .8s .2s both}
@@ -36,54 +36,54 @@ nav.scrolled{box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .hero-actions{display:flex;gap:1rem;flex-wrap:wrap;animation:fadeUp .8s .5s both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
 .hero-visual{position:relative;display:flex;align-items:center;justify-content:center;animation:fadeUp .9s .4s both}
-.hero-img-wrap{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(99,102,241,.15);max-width:520px;width:100%}
+.hero-img-wrap{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(59,130,246,.15);max-width:520px;width:100%}
 .hero-img-wrap img{width:100%;display:block}
 .hero-img-wrap::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,var(--bg));pointer-events:none}
-.float-card{position:absolute;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(99,102,241,.18);border-radius:14px;padding:14px 18px;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:float 5s ease-in-out infinite}
+.float-card{position:absolute;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(59,130,246,.18);border-radius:14px;padding:14px 18px;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:float 5s ease-in-out infinite}
 .float-card-1{bottom:-20px;left:-30px}.float-card-2{top:10%;right:-25px;animation-delay:-2.5s}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 .fc-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
 .fc-val{font-size:1.35rem;font-weight:800;color:#fff;margin-top:2px}.fc-val.green{color:#4ade80}
 .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 1.8rem;border-radius:12px;font-weight:700;font-size:.95rem;cursor:pointer;text-decoration:none;transition:all .2s;border:none;position:relative;overflow:hidden}
-.btn-glow{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 30px rgba(99,102,241,.35)}
-.btn-glow:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(99,102,241,.5)}
+.btn-glow{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 30px rgba(59,130,246,.35)}
+.btn-glow:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(59,130,246,.5)}
 .btn-glow::before{content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(45deg,transparent,rgba(255,255,255,.08),transparent);transform:rotate(45deg);transition:left .6s}
 .btn-glow:hover::before{left:100%}
 .btn-glass{background:var(--glass);color:var(--text);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px)}
-.btn-glass:hover{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.06)}section{position:relative;z-index:1;padding:6rem clamp(2rem,6vw,6rem)}
+.btn-glass:hover{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.06)}section{position:relative;z-index:1;padding:6rem clamp(2rem,6vw,6rem)}
 .sec-label{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent2);margin-bottom:.8rem}
 .sec-title{font-size:clamp(1.6rem,4vw,2.6rem);font-weight:900;line-height:1.15;margin-bottom:1rem;letter-spacing:-.02em}
 .sec-sub{color:var(--muted);font-size:1rem;max-width:520px;margin-bottom:3rem}
 .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
 .feat{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:16px;padding:2rem;transition:border-color .3s,transform .3s,box-shadow .3s}
-.feat:hover{border-color:rgba(99,102,241,.35);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.3)}
+.feat:hover{border-color:rgba(59,130,246,.35);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.3)}
 .feat-img{width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:1.2rem}
 .feat h3{font-size:1.05rem;font-weight:800;margin-bottom:.5rem}
 .feat p{font-size:.88rem;color:var(--muted);line-height:1.7}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1.5rem;counter-reset:s}
 .step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2rem 1.8rem;position:relative;overflow:hidden;transition:border-color .3s,transform .3s}
-.step:hover{border-color:rgba(99,102,241,.3);transform:translateY(-3px)}
-.step::before{counter-increment:s;content:counter(s);position:absolute;top:1.2rem;right:1.2rem;width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(167,139,250,.15));border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:var(--accent2)}
+.step:hover{border-color:rgba(59,130,246,.3);transform:translateY(-3px)}
+.step::before{counter-increment:s;content:counter(s);position:absolute;top:1.2rem;right:1.2rem;width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(245,158,11,.15));border:1px solid rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:var(--accent2)}
 .step h3{font-size:1rem;font-weight:800;margin-bottom:.5rem}
 .step p{font-size:.85rem;color:var(--muted)}
 .prov-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
 .prov{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem;display:flex;align-items:center;gap:1rem;transition:border-color .25s}
-.prov:hover{border-color:rgba(99,102,241,.3)}
+.prov:hover{border-color:rgba(59,130,246,.3)}
 .prov-logo{width:48px;height:48px;border-radius:12px;overflow:hidden;flex-shrink:0}
 .prov-logo img{width:100%;height:100%;object-fit:cover}
 .prov h4{font-size:.92rem;font-weight:700}.prov p{font-size:.78rem;color:var(--muted)}
 .badge-s{display:inline-block;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.2);color:#fbbf24;border-radius:4px;font-size:.6rem;font-weight:700;padding:.1rem .4rem;margin-left:.4rem;vertical-align:middle}
-.access-panel{background:linear-gradient(145deg,rgba(99,102,241,.08),rgba(167,139,250,.05));border:1px solid rgba(99,102,241,.18);border-radius:20px;padding:2.5rem;max-width:480px;position:relative;overflow:hidden}
-.access-panel::before{content:"";position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(99,102,241,.12),transparent 70%);pointer-events:none}
+.access-panel{background:linear-gradient(145deg,rgba(59,130,246,.08),rgba(245,158,11,.05));border:1px solid rgba(59,130,246,.18);border-radius:20px;padding:2.5rem;max-width:480px;position:relative;overflow:hidden}
+.access-panel::before{content:"";position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,.12),transparent 70%);pointer-events:none}
 .access-panel h3{font-size:1.15rem;font-weight:800;margin-bottom:.4rem}
 .access-panel .hint{font-size:.82rem;color:var(--muted);margin-bottom:1.2rem}
 .input-row{display:flex;gap:.6rem}
 .input-row input{flex:1;padding:.8rem 1rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.92rem;outline:none;transition:border-color .2s,box-shadow .2s}
 .input-row input::placeholder{color:rgba(255,255,255,.25)}
-.input-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.input-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
 .input-row button{padding:.8rem 1.4rem;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-weight:700;font-size:.9rem;cursor:pointer;white-space:nowrap;transition:transform .15s,box-shadow .15s}
-.input-row button:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.4)}
-.cta-block{text-align:center;padding:6rem 2rem;position:relative;z-index:1;background:linear-gradient(180deg,transparent,rgba(99,102,241,.06),transparent)}
+.input-row button:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.4)}
+.cta-block{text-align:center;padding:6rem 2rem;position:relative;z-index:1;background:linear-gradient(180deg,transparent,rgba(59,130,246,.06),transparent)}
 .cta-block h2{font-size:clamp(1.6rem,4vw,2.5rem);font-weight:900;margin-bottom:1rem}
 .cta-block p{color:var(--muted);margin-bottom:2rem;font-size:1rem}
 footer{text-align:center;padding:2.5rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);position:relative;z-index:1}
@@ -95,6 +95,27 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
 </head>
 <body><div class="bg-mesh"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 <div class="grid-overlay"></div>
+<!-- Circuit board SVG overlay -->
+<svg class="circuit-bg" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.06">
+<defs>
+<pattern id="circuit" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
+<circle cx="0" cy="0" r="2" fill="#3b82f6"/><circle cx="120" cy="0" r="2" fill="#3b82f6"/><circle cx="0" cy="120" r="2" fill="#3b82f6"/><circle cx="120" cy="120" r="2" fill="#3b82f6"/><circle cx="60" cy="60" r="3" fill="#f59e0b"/>
+<path d="M0 0h30M90 0h30M0 120h30M90 120h30M0 0v30M0 90v30M120 0v30M120 90v30M60 30v30M60 60h30M30 60h30" stroke="#3b82f6" stroke-width=".8" fill="none"/>
+<path d="M60 60v30M30 30h30" stroke="#f59e0b" stroke-width=".6" fill="none"/>
+<circle cx="30" cy="30" r="1.5" fill="#60a5fa"/><circle cx="90" cy="60" r="1.5" fill="#60a5fa"/><circle cx="60" cy="90" r="1.5" fill="#f59e0b"/>
+</pattern>
+</defs>
+<rect width="100%" height="100%" fill="url(#circuit)"/>
+</svg>
+<!-- Bokeh particles -->
+<div style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden" aria-hidden="true">
+<div style="position:absolute;width:6px;height:6px;border-radius:50%;background:#3b82f6;opacity:.35;top:15%;left:20%;animation:drift 22s ease-in-out infinite alternate"></div>
+<div style="position:absolute;width:4px;height:4px;border-radius:50%;background:#f59e0b;opacity:.3;top:35%;left:75%;animation:drift 18s ease-in-out infinite alternate-reverse"></div>
+<div style="position:absolute;width:8px;height:8px;border-radius:50%;background:#60a5fa;opacity:.2;top:65%;left:40%;animation:drift 25s ease-in-out infinite alternate;filter:blur(2px)"></div>
+<div style="position:absolute;width:5px;height:5px;border-radius:50%;background:#fbbf24;opacity:.25;top:80%;left:15%;animation:drift 20s ease-in-out infinite alternate-reverse"></div>
+<div style="position:absolute;width:3px;height:3px;border-radius:50%;background:#3b82f6;opacity:.4;top:25%;left:55%;animation:drift 15s ease-in-out infinite alternate"></div>
+<div style="position:absolute;width:7px;height:7px;border-radius:50%;background:#f59e0b;opacity:.18;top:50%;left:85%;animation:drift 23s ease-in-out infinite alternate;filter:blur(3px)"></div>
+</div>
 
 <nav id="nav">
   <a class="logo" href="/">Wolf<b>Mod</b></a>
@@ -117,8 +138,36 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
     </div>
   </div>
   <div class="hero-visual">
-    <div class="hero-img-wrap">
-      <img src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&auto=format" alt="AI Chat" loading="eager">
+    <div class="hero-img-wrap" style="display:flex;align-items:center;justify-content:center;min-height:360px">
+      <svg viewBox="0 0 400 360" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:480px;filter:drop-shadow(0 0 40px rgba(59,130,246,.15))">
+        <!-- Circuit board base -->
+        <rect x="40" y="30" width="320" height="300" rx="20" fill="rgba(12,18,38,.6)" stroke="#3b82f6" stroke-width="1"/>
+        <!-- Traces -->
+        <path d="M80 80h60v40h80v-40h60M200 120v60M140 180h120M140 180v60h60M260 180v60h-60" stroke="#3b82f6" stroke-width="1.5" opacity=".5"/>
+        <path d="M200 240v40M160 280h80" stroke="#f59e0b" stroke-width="1.5" opacity=".6"/>
+        <!-- Nodes -->
+        <circle cx="80" cy="80" r="6" fill="#3b82f6" opacity=".8"><animate attributeName="opacity" values=".4;.9;.4" dur="3s" repeatCount="indefinite"/></circle>
+        <circle cx="200" cy="80" r="6" fill="#3b82f6" opacity=".7"/>
+        <circle cx="320" cy="80" r="6" fill="#3b82f6" opacity=".8"><animate attributeName="opacity" values=".5;1;.5" dur="2.5s" repeatCount="indefinite"/></circle>
+        <circle cx="140" cy="120" r="5" fill="#60a5fa" opacity=".6"/>
+        <circle cx="260" cy="120" r="5" fill="#60a5fa" opacity=".6"/>
+        <circle cx="200" cy="180" r="8" fill="#f59e0b" opacity=".7"><animate attributeName="r" values="7;9;7" dur="2s" repeatCount="indefinite"/></circle>
+        <circle cx="140" cy="240" r="5" fill="#f59e0b" opacity=".5"/>
+        <circle cx="260" cy="240" r="5" fill="#f59e0b" opacity=".5"/>
+        <circle cx="200" cy="280" r="6" fill="#3b82f6" opacity=".8"/>
+        <!-- Bot icon center -->
+        <rect x="170" y="145" width="60" height="45" rx="8" fill="rgba(59,130,246,.15)" stroke="#3b82f6" stroke-width="1.5"/>
+        <circle cx="188" cy="163" r="4" fill="#60a5fa"/><circle cx="212" cy="163" r="4" fill="#60a5fa"/>
+        <path d="M185 175h30" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="200" y1="145" x2="200" y2="130" stroke="#3b82f6" stroke-width="1.5"/><circle cx="200" cy="126" r="4" fill="#f59e0b"/>
+        <!-- Pulse rings -->
+        <circle cx="200" cy="167" r="40" stroke="#3b82f6" stroke-width=".5" opacity=".2"><animate attributeName="r" values="40;55;40" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".2;0;.2" dur="4s" repeatCount="indefinite"/></circle>
+        <!-- Bokeh dots -->
+        <circle cx="90" cy="160" r="3" fill="#3b82f6" opacity=".3"><animate attributeName="cy" values="160;150;160" dur="5s" repeatCount="indefinite"/></circle>
+        <circle cx="310" cy="200" r="2" fill="#f59e0b" opacity=".4"><animate attributeName="cy" values="200;190;200" dur="4s" repeatCount="indefinite"/></circle>
+        <circle cx="120" cy="300" r="2.5" fill="#60a5fa" opacity=".3"/>
+        <circle cx="300" cy="100" r="2" fill="#fbbf24" opacity=".35"/>
+      </svg>
     </div>
     <div class="float-card float-card-1"><div class="fc-label" data-i18n="fc_msg">Xử lý tin nhắn</div><div class="fc-val green">24/7</div></div>
     <div class="float-card float-card-2"><div class="fc-label" data-i18n="fc_resp">Phản hồi</div><div class="fc-val">&lt;1s</div></div>
@@ -144,22 +193,30 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
   </div>
   <div class="features">
     <div class="feat reveal">
-      <img class="feat-img" src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80&auto=format" alt="AI" loading="lazy">
+      <div class="feat-icon" style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(245,158,11,.05));border-radius:10px;margin-bottom:1.2rem">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01" stroke="#f59e0b"/></svg>
+      </div>
       <h3 data-i18n="f1_t">AI tự động phản hồi</h3>
       <p data-i18n="f1_d">Bot phân tích nội dung tin nhắn và trả lời tự nhiên. Hỗ trợ đa ngôn ngữ, hiểu ngữ cảnh hội thoại.</p>
     </div>
     <div class="feat reveal">
-      <img class="feat-img" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80&auto=format" alt="Dashboard" loading="lazy">
+      <div class="feat-icon" style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(245,158,11,.05));border-radius:10px;margin-bottom:1.2rem">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9" stroke="#f59e0b"/><path d="M13 13h4M13 17h4"/></svg>
+      </div>
       <h3 data-i18n="f2_t">Dashboard quản lý</h3>
       <p data-i18n="f2_d">Theo dõi tin nhắn, trạng thái bot, model đang dùng. Bật/tắt, thay đổi cài đặt từ admin panel.</p>
     </div>
     <div class="feat reveal">
-      <img class="feat-img" src="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600&q=80&auto=format" alt="Security" loading="lazy">
+      <div class="feat-icon" style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(245,158,11,.05));border-radius:10px;margin-bottom:1.2rem">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="#f59e0b"/><circle cx="12" cy="16" r="1"/></svg>
+      </div>
       <h3 data-i18n="f3_t">Bảo mật nhiều lớp</h3>
       <p data-i18n="f3_d">OAuth Google cho mỗi user. Token mã hóa phía server. Session riêng biệt. Link hết hạn tự động.</p>
     </div>
     <div class="feat reveal">
-      <img class="feat-img" src="https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600&q=80&auto=format" alt="Multi-model" loading="lazy">
+      <div class="feat-icon" style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(245,158,11,.05));border-radius:10px;margin-bottom:1.2rem">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="#f59e0b"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="#f59e0b"/></svg>
+      </div>
       <h3 data-i18n="f4_t">User tự chọn model</h3>
       <p data-i18n="f4_d">Mỗi khách hàng tự đăng nhập Google, chọn model Gemini riêng từ danh sách thực của tài khoản họ.</p>
     </div>
@@ -173,9 +230,9 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
     <p class="sec-sub" data-i18n="prov_sub">Nhiều nhà cung cấp AI hàng đầu. Thêm mới trong vài giây.</p>
   </div>
   <div class="prov-grid reveal">
-    <div class="prov"><div class="prov-logo"><img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini"></div><div><h4>Google Gemini</h4><p data-i18n="prov_gemini">Đăng nhập Google OAuth</p></div></div>
-    <div class="prov"><div class="prov-logo" style="background:#fff;display:flex;align-items:center;justify-content:center"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Anthropic_logo.svg/1200px-Anthropic_logo.svg.png" alt="Claude" style="width:32px;height:32px;object-fit:contain"></div><div><h4>Claude</h4><p>API Key<span class="badge-s">soon</span></p></div></div>
-    <div class="prov"><div class="prov-logo" style="background:#fff;display:flex;align-items:center;justify-content:center"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1200px-ChatGPT_logo.svg.png" alt="GPT" style="width:32px;height:32px;object-fit:contain"></div><div><h4>OpenAI GPT</h4><p>API Key<span class="badge-s">soon</span></p></div></div>
+    <div class="prov"><div class="prov-logo" style="background:linear-gradient(135deg,#1a73e8,#4285f4);display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="#fff" opacity=".9"/><path d="M2 17l10 5 10-5" stroke="#fff" stroke-width="1.5" opacity=".7"/><path d="M2 12l10 5 10-5" stroke="#fff" stroke-width="1.5" opacity=".5"/></svg></div><div><h4>Google Gemini</h4><p data-i18n="prov_gemini">Đăng nhập Google OAuth</p></div></div>
+    <div class="prov"><div class="prov-logo" style="background:linear-gradient(135deg,#d97706,#f59e0b);display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg></div><div><h4>Claude</h4><p>API Key<span class="badge-s">sắp ra</span></p></div></div>
+    <div class="prov"><div class="prov-logo" style="background:linear-gradient(135deg,#10a37f,#1a7f64);display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" stroke-linecap="round"/></svg></div><div><h4>OpenAI GPT</h4><p>API Key<span class="badge-s">sắp ra</span></p></div></div>
   </div>
 </section><section id="huong-dan">
   <div class="reveal">

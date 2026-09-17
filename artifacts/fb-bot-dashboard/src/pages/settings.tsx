@@ -25,11 +25,11 @@ export default function Settings() {
     
     setIgnore.mutate({ data: { threadId: ignoreThreadId, ignore: true } }, {
       onSuccess: () => {
-        toast({ title: "Thread Blocked", description: `Bot will no longer reply to ${ignoreThreadId}` });
+        toast({ title: "Đã chặn Thread", description: `Bot sẽ không trả lời ${ignoreThreadId} nữa` });
         setIgnoreThreadId("");
       },
       onError: (err) => {
-        toast({ title: "Error", description: err.error, variant: "destructive" });
+        toast({ title: "Lỗi", description: err.error, variant: "destructive" });
       }
     });
   };
@@ -40,11 +40,11 @@ export default function Settings() {
     
     clearConv.mutate({ data: { threadId: clearThreadId } }, {
       onSuccess: () => {
-        toast({ title: "Memory Cleared", description: `Cleared AI context for ${clearThreadId}` });
+        toast({ title: "Đã xóa bộ nhớ", description: `Đã xóa ngữ cảnh AI cho ${clearThreadId}` });
         setClearThreadId("");
       },
       onError: (err) => {
-        toast({ title: "Error", description: err.error, variant: "destructive" });
+        toast({ title: "Lỗi", description: err.error, variant: "destructive" });
       }
     });
   };
@@ -52,8 +52,8 @@ export default function Settings() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Advanced Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage thread blocks and agent memory.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Cài đặt Nâng cao</h1>
+        <p className="text-muted-foreground mt-1">Quản lý chặn thread và bộ nhớ hội thoại AI.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -62,15 +62,15 @@ export default function Settings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldBan className="w-5 h-5 text-orange-500" />
-              Block Threads
+              Chặn Thread
             </CardTitle>
-            <CardDescription>Prevent the bot from replying to specific conversations</CardDescription>
+            <CardDescription>Ngăn bot trả lời các cuộc hội thoại cụ thể</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert className="bg-orange-500/10 border-orange-500/20 text-orange-500 mb-4">
               <Info className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                Find the Thread ID in the Messenger URL (e.g. facebook.com/messages/t/<strong>123456789</strong>)
+                Tìm Thread ID trong URL Messenger (vd: facebook.com/messages/t/<strong>123456789</strong>)
               </AlertDescription>
             </Alert>
             
@@ -78,14 +78,14 @@ export default function Settings() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Paste Thread ID..." 
+                  placeholder="Dán Thread ID..." 
                   value={ignoreThreadId}
                   onChange={(e) => setIgnoreThreadId(e.target.value)}
                   className="pl-9 bg-background/50 font-mono text-sm"
                 />
               </div>
               <Button type="submit" variant="secondary" disabled={!ignoreThreadId || setIgnore.isPending}>
-                Block
+                Chặn
               </Button>
             </form>
           </CardContent>
@@ -95,24 +95,24 @@ export default function Settings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-destructive" />
-              Clear Memory
+              Xóa Bộ nhớ
             </CardTitle>
-            <CardDescription>Erase the AI's conversation history for a specific thread</CardDescription>
+            <CardDescription>Xóa lịch sử hội thoại AI cho một thread cụ thể</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground mb-4">
-              Useful if the bot gets stuck in a loop or needs to forget previous context.
+              Hữu ích khi bot bị lặp hoặc cần quên ngữ cảnh trước đó.
             </p>
             
             <form onSubmit={handleClear} className="flex gap-2">
               <Input 
-                placeholder="Paste Thread ID..." 
+                placeholder="Dán Thread ID..." 
                 value={clearThreadId}
                 onChange={(e) => setClearThreadId(e.target.value)}
                 className="bg-background/50 font-mono text-sm"
               />
               <Button type="submit" variant="destructive" disabled={!clearThreadId || clearConv.isPending}>
-                Clear Context
+                Xóa ngữ cảnh
               </Button>
             </form>
           </CardContent>

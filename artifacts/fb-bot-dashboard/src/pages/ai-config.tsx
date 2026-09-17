@@ -18,7 +18,7 @@ interface ConnectedState {
   baseUrl: string;
 }
 
-const STORAGE_KEY = "ninerouter_connected";
+const STORAGE_KEY = "gemini_connected";
 
 function loadState(): ConnectedState {
   try {
@@ -40,7 +40,6 @@ export default function AiConfig() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected") === "1") {
       const model = params.get("model") ?? "";
-      // Fetch current botState to get baseUrl
       fetch("/api/bot/ai-config-status")
         .then((r) => r.ok ? r.json() : Promise.reject(r))
         .then((data) => {
@@ -53,8 +52,7 @@ export default function AiConfig() {
           setState(next);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         });
-      toast({ title: "Da ket noi 9Router ✓", description: "Bot san sang su dung AI." });
-      // Clean URL
+      toast({ title: "\u0110\u00e3 k\u1ebft n\u1ed1i Gemini \u2713", description: "Bot s\u1eb5n s\u00e0ng s\u1eed d\u1ee5ng AI." });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -64,11 +62,9 @@ export default function AiConfig() {
     const url = `/connect/gemini?redirect=${encodeURIComponent(redirectUrl)}`;
     const popup = window.open(url, "gemini-connect", "width=500,height=680,resizable=no,scrollbars=yes");
     if (!popup) {
-      // Fallback: navigate directly
       window.location.href = url;
       return;
     }
-    // Poll popup for redirect back
     const timer = setInterval(() => {
       try {
         if (popup.closed) {
@@ -79,7 +75,6 @@ export default function AiConfig() {
         if (popupUrl.includes("connected=1")) {
           clearInterval(timer);
           popup.close();
-          // Parse from popup URL
           const pu = new URL(popupUrl);
           const model = pu.searchParams.get("model") ?? "";
           fetch("/api/bot/ai-config-status")
@@ -88,13 +83,13 @@ export default function AiConfig() {
               const next: ConnectedState = { connected: true, model: data.aiModel ?? model, baseUrl: data.aiBaseUrl ?? "" };
               setState(next);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-              toast({ title: "Da ket noi 9Router ✓", description: `Model: ${next.model}` });
+              toast({ title: "\u0110\u00e3 k\u1ebft n\u1ed1i Gemini \u2713", description: `Model: ${next.model}` });
             })
             .catch(() => {
               const next: ConnectedState = { connected: true, model, baseUrl: "" };
               setState(next);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-              toast({ title: "Da ket noi 9Router ✓", description: `Model: ${model}` });
+              toast({ title: "\u0110\u00e3 k\u1ebft n\u1ed1i Gemini \u2713", description: `Model: ${model}` });
             });
         }
       } catch {
@@ -108,13 +103,13 @@ export default function AiConfig() {
       await fetch("/api/bot/ai-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseUrl: "", apiKey: "", model: "cc/claude-opus-4-5-20251101" }),
+        body: JSON.stringify({ baseUrl: "", apiKey: "", model: "" }),
       });
     } catch { /* ignore */ }
     const next: ConnectedState = { connected: false, model: "", baseUrl: "" };
     setState(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    toast({ title: "Da ngat ket noi", description: "Bot se dung cau hinh env mac dinh." });
+    toast({ title: "\u0110\u00e3 ng\u1eaft k\u1ebft n\u1ed1i", description: "Bot s\u1ebd d\u00f9ng c\u1ea5u h\u00ecnh m\u1eb7c \u0111\u1ecbnh." });
   }
 
   async function handleTest() {
@@ -124,15 +119,15 @@ export default function AiConfig() {
       const res = await fetch("/api/bot/ai-config-status");
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
-      if (!data.aiBaseUrl || !data.aiApiKey) throw new Error("Chua cau hinh base URL / API key");
+      if (!data.aiBaseUrl || !data.aiApiKey) throw new Error("Ch\u01b0a c\u1ea5u h\u00ecnh base URL / API key");
       const testUrl = data.aiBaseUrl.replace(/\/+$/, "") + "/models";
       const r2 = await fetch(testUrl, { headers: { Authorization: "Bearer " + data.aiApiKey }, signal: AbortSignal.timeout(8000) });
       if (!r2.ok) throw new Error("HTTP " + r2.status);
-      toast({ title: "Ket noi thanh cong ✓", description: data.aiBaseUrl });
+      toast({ title: "K\u1ebft n\u1ed1i th\u00e0nh c\u00f4ng \u2713", description: data.aiBaseUrl });
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       setTestError(msg);
-      toast({ title: "Ket noi that bai", description: msg, variant: "destructive" });
+      toast({ title: "K\u1ebft n\u1ed1i th\u1ea5t b\u1ea1i", description: msg, variant: "destructive" });
     } finally {
       setTesting(false);
     }
@@ -141,24 +136,23 @@ export default function AiConfig() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">AI Config</h1>
+        <h1 className="text-3xl font-bold tracking-tight">C\u1ea5u h\u00ecnh AI</h1>
         <p className="text-muted-foreground mt-1">
-          Ket noi 9Router de bot tu dong goi AI. Bam mot nut, khong can nhap tay.
+          K\u1ebft n\u1ed1i Google Gemini \u0111\u1ec3 bot t\u1ef1 \u0111\u1ed9ng tr\u1ea3 l\u1eddi tin nh\u1eafn. B\u1ea5m m\u1ed9t n\u00fat, kh\u00f4ng c\u1ea7n nh\u1eadp tay.
         </p>
       </div>
-
       {/* Main connect card */}
       <Card className="border-border/50 bg-card/50 overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-violet-600 to-indigo-600" />
+        <div className="h-1 bg-gradient-to-r from-blue-600 to-amber-500" />
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-900/30">
-              <Zap className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-amber-500 flex items-center justify-center shadow-lg shadow-blue-900/30">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
-            9Router AI Gateway
+            Google Gemini
           </CardTitle>
           <CardDescription>
-            Cap quyen mot lan. Bot tu dong dung 9Router de tra loi inbox ca nhan.
+            C\u1ea5p quy\u1ec1n m\u1ed9t l\u1ea7n qua Google OAuth. Bot t\u1ef1 \u0111\u1ed9ng d\u00f9ng Gemini \u0111\u1ec3 tr\u1ea3 l\u1eddi tin nh\u1eafn.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -168,34 +162,36 @@ export default function AiConfig() {
               ? "bg-green-500/10 border-green-500/20"
               : "bg-muted/30 border-border/40"
           }`}>
-            {state.connected
-              ? <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-              : <Globe className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
-            <div className="flex-1 min-w-0">
+            {state.connected ? (
+              <svg className="w-5 h-5 text-green-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            ) : (
+              <svg className="w-5 h-5 text-muted-foreground flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            )}
+            <div>
               {state.connected ? (
                 <>
-                  <p className="text-sm font-semibold text-green-400">Da ket noi 9Router</p>
-                  {state.model && <p className="text-xs text-muted-foreground font-mono truncate">Model: {state.model}</p>}
-                  {state.baseUrl && <p className="text-xs text-muted-foreground font-mono truncate">{state.baseUrl}</p>}
+                  <p className="text-sm font-semibold text-green-400">\u0110\u00e3 k\u1ebft n\u1ed1i Gemini</p>
+                  {state.model && <p className="text-xs text-muted-foreground mt-0.5">Model: {state.model}</p>}
+                  {state.baseUrl && <p className="text-xs text-muted-foreground">URL: {state.baseUrl}</p>}
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Chua ket noi. Bam nut de bat dau.</p>
+                <p className="text-sm text-muted-foreground">Ch\u01b0a k\u1ebft n\u1ed1i. B\u1ea5m n\u00fat \u0111\u1ec3 b\u1eaft \u0111\u1ea7u.</p>
               )}
             </div>
             {state.connected && (
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 ml-auto">Active</Badge>
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 ml-auto">Ho\u1ea1t \u0111\u1ed9ng</Badge>
             )}
           </div>
 
           {/* Scope list */}
           <div className="space-y-2">
             {[
-              "Goi API AI de tao phan hoi tin nhan",
-              "Doc danh sach model co san tu 9Router",
-              "Khong luu tru du lieu nguoi dung",
+              "G\u1ecdi API Gemini \u0111\u1ec3 t\u1ea1o ph\u1ea3n h\u1ed3i tin nh\u1eafn",
+              "\u0110\u1ecdc danh s\u00e1ch model c\u00f3 s\u1eb5n t\u1eeb Google",
+              "Kh\u00f4ng l\u01b0u tr\u1eef d\u1eef li\u1ec7u ng\u01b0\u1eddi d\u00f9ng",
             ].map((s) => (
               <div key={s} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                <CheckCircle className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 {s}
               </div>
             ))}
@@ -213,12 +209,12 @@ export default function AiConfig() {
             <div className="flex gap-3">
               <Button onClick={handleTest} variant="secondary" disabled={testing} className="flex-1">
                 {testing
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Dang kiem tra...</>
-                  : <><CheckCircle className="w-4 h-4 mr-2" />Kiem tra ket noi</>}
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />\u0110ang ki\u1ec3m tra...</>
+                  : <><CheckCircle className="w-4 h-4 mr-2" />Ki\u1ec3m tra k\u1ebft n\u1ed1i</>}
               </Button>
               <Button onClick={openConnectPopup} variant="outline">
                 <RefreshCcw className="w-4 h-4 mr-2" />
-                Ket noi lai
+                K\u1ebft n\u1ed1i l\u1ea1i
               </Button>
               <Button onClick={handleDisconnect} variant="ghost" className="text-muted-foreground hover:text-destructive">
                 <Unlink className="w-4 h-4" />
@@ -227,17 +223,17 @@ export default function AiConfig() {
           ) : (
             <Button
               onClick={openConnectPopup}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-900/30"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-amber-500 hover:from-blue-700 hover:to-amber-600 shadow-lg shadow-blue-900/30"
             >
-              <Zap className="w-5 h-5 mr-2" />
-              Ket noi 9Router
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              K\u1ebft n\u1ed1i Google Gemini
             </Button>
           )}
 
           <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-400">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              Sau khi bam, cua so xac thuc se hien. Nhap API Key tu dashboard 9Router, bam Cap quyen. Xong.
+              Sau khi b\u1ea5m, c\u1eeda s\u1ed5 x\u00e1c th\u1ef1c Google s\u1ebd hi\u1ec7n. \u0110\u0103ng nh\u1eadp Google, ch\u1ecdn model Gemini, xong.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -248,15 +244,12 @@ export default function AiConfig() {
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <Info className="w-4 h-4 text-muted-foreground" />
-            Cau hinh nhanh
+            M\u1eb9o c\u1ea5u h\u00ecnh
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>Base URL 9Router tren Railway:</p>
-          <code className="block bg-muted/30 border border-border/40 rounded-md px-3 py-2 text-xs font-mono">
-            http://9router.railway.internal:20128/v1
-          </code>
-          <p>Lay API Key tai dashboard 9Router (tab Tokens / API Keys).</p>
+          <p>M\u1ed7i kh\u00e1ch h\u00e0ng t\u1ef1 \u0111\u0103ng nh\u1eadp Google v\u00e0 ch\u1ecdn model Gemini ri\u00eang t\u1ea1i trang <code className="bg-muted/30 px-1 rounded">/u/id</code>.</p>
+          <p>Admin kh\u00f4ng c\u1ea7n c\u1ea5u h\u00ecnh model. H\u1ec7 th\u1ed1ng per-user t\u1ef1 \u0111\u1ed9ng.</p>
         </CardContent>
       </Card>
     </div>

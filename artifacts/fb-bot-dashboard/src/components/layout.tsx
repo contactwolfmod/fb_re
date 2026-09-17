@@ -16,9 +16,9 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: Bot },
-    { href: "/settings", label: "Settings", icon: Settings },
-    { href: "/ai-config", label: "AI Config", icon: Cpu },
+    { href: "/", label: "Bảng điều khiển", icon: Bot },
+    { href: "/settings", label: "Cài đặt", icon: Settings },
+    { href: "/ai-config", label: "Cấu hình AI", icon: Cpu },
   ];
 
   const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => (
@@ -27,7 +27,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
           <MessageSquare className="w-5 h-5" />
         </div>
-        <span className="font-semibold tracking-tight text-foreground/90 truncate flex-1">Bot Control</span>
+        <span className="font-semibold tracking-tight text-foreground/90 truncate flex-1">Quản lý Bot</span>
         {isMobile && (
           <button
             onClick={() => setSidebarOpen(false)}
@@ -66,8 +66,8 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-muted/30 border border-border/30">
           <ShieldAlert className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <div className="flex flex-col min-w-0">
-            <span className="text-xs font-medium text-foreground/80">Protected</span>
-            <span className="text-[10px] text-muted-foreground">Admin Access Only</span>
+            <span className="text-xs font-medium text-foreground/80">Được bảo vệ</span>
+            <span className="text-[10px] text-muted-foreground">Chỉ Quản trị viên</span>
           </div>
         </div>
       </div>
