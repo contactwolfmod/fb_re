@@ -2,7 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startBot, canAutoRestart } from "./bot/facebook";
 import { restoreTenantBotsOnBoot } from "./bot/tenantBots";
-import { ADMIN_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "./lib/adminAuth";
+import { ADMIN_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, HAS_WEB_OAUTH_CLIENT } from "./lib/adminAuth";
 
 const rawPort = process.env["PORT"];
 
@@ -70,6 +70,7 @@ app.listen(port, async (err) => {
       ADMIN_TOKEN: ADMIN_TOKEN ? "set" : "MISSING",
       GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? `built-in (${GOOGLE_CLIENT_ID.length} chars)` : "MISSING",
       GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET ? "built-in" : "MISSING",
+      GEMINI_OAUTH_FLOW: HAS_WEB_OAUTH_CLIENT ? "hosted-redirect (env web client)" : "loopback paste-code",
     },
     "Env var check at boot",
   );

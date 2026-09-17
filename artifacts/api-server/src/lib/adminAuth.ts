@@ -19,6 +19,20 @@ const GEMINI_CLI_CLIENT_SECRET_PARTS = ["GOCSPX", "4uHgMPm", "1o7Sk", "geV6Cu5cl
 export const GOOGLE_CLIENT_ID = `${GEMINI_CLI_CLIENT_ID_PARTS[0]}-${GEMINI_CLI_CLIENT_ID_PARTS[1]}.${GEMINI_CLI_CLIENT_ID_PARTS[2]}`;
 export const GOOGLE_CLIENT_SECRET = GEMINI_CLI_CLIENT_SECRET_PARTS.join("-");
 
+// The built-in client above is registered by Google as an *installed* (desktop)
+// app, so Google only accepts loopback redirect URIs for it. A hosted
+// https://<domain>/connect/gemini/callback redirect is rejected with
+// redirect_uri_mismatch. Deployments that own a Google Cloud project can set
+// their own *web* OAuth client via env and get the nicer hosted redirect flow;
+// otherwise we fall back to the loopback + paste-the-code flow below.
+export const GOOGLE_WEB_CLIENT_ID = process.env["GOOGLE_CLIENT_ID"] ?? "";
+export const GOOGLE_WEB_CLIENT_SECRET = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+export const HAS_WEB_OAUTH_CLIENT = !!(GOOGLE_WEB_CLIENT_ID && GOOGLE_WEB_CLIENT_SECRET);
+
+// Loopback redirect accepted by installed-app clients. Nothing listens on this
+// port: the browser simply fails to connect and the user copies the URL.
+export const GEMINI_LOOPBACK_REDIRECT_URI = "http://localhost:45289";
+
 // Gemini Code Assist native endpoint (not OpenAI-compatible)
 export const GEMINI_BASE_URL = "https://cloudcode-pa.googleapis.com/v1internal";
 export const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";

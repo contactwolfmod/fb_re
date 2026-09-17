@@ -9,6 +9,8 @@ import { logger } from "./lib/logger";
 import { botState } from "./bot/state";
 import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUsed,
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GEMINI_BASE_URL, GEMINI_DEFAULT_MODEL,
+  GOOGLE_WEB_CLIENT_ID, GOOGLE_WEB_CLIENT_SECRET, HAS_WEB_OAUTH_CLIENT,
+  GEMINI_LOOPBACK_REDIRECT_URI,
   createOAuthState, consumeOAuthState, setUserAiConfig, getSessionUser,
   fetchGeminiModels, updateUserAiModel } from "./lib/adminAuth";
 
@@ -97,18 +99,96 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
   // raw FB thread ID from the connect link, as before.
   const ownerKey = serviceUser?.id ?? ut?.fbThreadId;
   const state = createOAuthState(isAdmin, ownerKey, userTokenId, serviceUser?.id);
-  const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
+
+  // Web OAuth client (deployment-owned): normal hosted redirect flow.
+  if (HAS_WEB_OAUTH_CLIENT) {
+    const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
+    const params = new URLSearchParams({
+      client_id: GOOGLE_WEB_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: GEMINI_SCOPES,
+      access_type: "offline",
+      prompt: "consent select_account",
+      state,
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+    return;
+  }
+
+  // Built-in installed-app client: Google only accepts a loopback redirect, so
+  // send the user to Google and have them paste back the resulting URL/code.
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri,
+    redirect_uri: GEMINI_LOOPBACK_REDIRECT_URI,
     response_type: "code",
     scope: GEMINI_SCOPES,
     access_type: "offline",
     prompt: "consent select_account",
     state,
   });
-  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kết nối Google Gemini</title>
+  <style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0b0d14;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;margin:0}.card{background:#121624;border:1px solid #23293e;border-radius:14px;padding:28px;max-width:560px;width:100%}ol{text-align:left;color:#94a3b8;font-size:14px;line-height:1.7;padding-left:20px}code{background:#080a10;padding:2px 6px;border-radius:4px;color:#a5b4fc;font-size:13px;word-break:break-all}input{width:100%;padding:12px;border-radius:8px;border:1px solid #333a52;background:#080a10;color:#fff;font-size:14px;margin:10px 0 16px}button,.btn{display:block;text-align:center;background:#6366f1;color:#fff;border:0;border-radius:8px;padding:12px 20px;font-weight:600;font-size:15px;cursor:pointer;width:100%;text-decoration:none;margin-bottom:16px}</style>
+  </head><body><div class="card">
+    <h2 style="margin:0 0 12px">Kết nối Google Gemini</h2>
+    <a class="btn" href="${authUrl}" target="_blank" rel="noopener">Bước 1 — Mở trang đăng nhập Google</a>
+    <ol>
+      <li>Đăng nhập và bấm đồng ý (Allow).</li>
+      <li>Trình duyệt sẽ chuyển tới <code>${GEMINI_LOOPBACK_REDIRECT_URI}/?code=...</code> và báo lỗi không truy cập được. Đây là bình thường.</li>
+      <li>Copy toàn bộ URL trên thanh địa chỉ của trang lỗi đó.</li>
+      <li>Dán vào ô bên dưới rồi bấm Hoàn tất.</li>
+    </ol>
+    <form method="POST" action="/connect/gemini/paste-code">
+      <input type="hidden" name="state" value="${state}" />
+      <input name="pasted" placeholder="Dán URL hoặc mã code vào đây" required autocomplete="off" />
+      <button type="submit">Bước 2 — Hoàn tất kết nối</button>
+    </form>
+  </div></body></html>`);
 });
+
+interface GoogleTokens {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
+}
+
+async function exchangeGeminiCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+): Promise<GoogleTokens> {
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code, client_id: clientId, client_secret: clientSecret,
+      redirect_uri: redirectUri, grant_type: "authorization_code",
+    }).toString(),
+    signal: AbortSignal.timeout(10_000),
+  } as RequestInit & { signal: AbortSignal });
+
+  if (!tokenRes.ok) throw new Error(`Token exchange HTTP ${tokenRes.status}: ${await tokenRes.text()}`);
+
+  const tokens = await tokenRes.json() as GoogleTokens;
+  if (!tokens.access_token) throw new Error("Khong co access_token trong response");
+  return tokens;
+}
+
+// Google appends ?code=... to the loopback redirect. Users paste either that
+// whole URL or just the bare code, so accept both shapes.
+function extractAuthCode(pasted: string): string | undefined {
+  const raw = pasted.trim();
+  if (!raw) return undefined;
+  const match = raw.match(/[?&]code=([^&\s]+)/);
+  if (match?.[1]) return decodeURIComponent(match[1]);
+  if (/^https?:\/\//i.test(raw)) return undefined;
+  return raw;
+}
 
 app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
   const { code, state, error } = req.query as Record<string, string>;
@@ -127,24 +207,28 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
   const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
 
   try {
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: redirectUri, grant_type: "authorization_code",
-      }).toString(),
-      signal: AbortSignal.timeout(10_000),
-    } as RequestInit & { signal: AbortSignal });
+    // This hosted callback only ever runs for a deployment-owned web client;
+    // the built-in installed-app client goes through the loopback/paste flow.
+    const tokens = await exchangeGeminiCode(
+      code,
+      HAS_WEB_OAUTH_CLIENT ? GOOGLE_WEB_CLIENT_ID : GOOGLE_CLIENT_ID,
+      HAS_WEB_OAUTH_CLIENT ? GOOGLE_WEB_CLIENT_SECRET : GOOGLE_CLIENT_SECRET,
+      redirectUri,
+    );
 
-    if (!tokenRes.ok) throw new Error(`Token exchange HTTP ${tokenRes.status}: ${await tokenRes.text()}`);
+    await finishGeminiConnect(res, tokens, stateData);
+  } catch (err: any) {
+    logger.error({ err: err?.message }, "Gemini OAuth callback failed");
+    res.redirect(`/admin?geminiErr=${encodeURIComponent(err?.message ?? "unknown")}`);
+  }
+});
 
-    const tokens = await tokenRes.json() as {
-      access_token: string; refresh_token?: string;
-      expires_in: number; token_type: string;
-    };
-    if (!tokens.access_token) throw new Error("Khong co access_token trong response");
-
+async function finishGeminiConnect(
+  res: Response,
+  tokens: GoogleTokens,
+  stateData: { isAdmin: boolean; ownerKey?: string; userTokenId?: string; serviceUserId?: string },
+): Promise<void> {
+  {
     const { isAdmin, ownerKey, userTokenId, serviceUserId } = stateData;
 
     if (ownerKey) {
@@ -198,9 +282,40 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
     } else {
       res.status(400).send("Khong xac dinh duoc nguoi dung.");
     }
+  }
+}
+
+// Loopback flow completion: the user pastes the redirect URL (or bare code)
+// that Google produced for the built-in installed-app client.
+app.post("/connect/gemini/paste-code", async (req: Request, res: Response) => {
+  const { state, pasted } = req.body as { state?: string; pasted?: string };
+
+  const stateData = consumeOAuthState(state ?? "");
+  if (!stateData) {
+    res.status(400).setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send("Phien ket noi het han. <a href='/connect/gemini'>Thu lai</a>");
+    return;
+  }
+
+  const code = extractAuthCode(pasted ?? "");
+  if (!code) {
+    res.status(400).setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send("Khong tim thay ma code trong noi dung da dan. <a href='/connect/gemini'>Thu lai</a>");
+    return;
+  }
+
+  try {
+    const tokens = await exchangeGeminiCode(
+      code,
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      GEMINI_LOOPBACK_REDIRECT_URI,
+    );
+    await finishGeminiConnect(res, tokens, stateData);
   } catch (err: any) {
-    logger.error({ err: err?.message }, "Gemini OAuth callback failed");
-    res.redirect(`/admin?geminiErr=${encodeURIComponent(err?.message ?? "unknown")}`);
+    logger.error({ err: err?.message }, "Gemini OAuth paste-code failed");
+    res.status(400).setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`Doi ma that bai: ${err?.message ?? "unknown"}. <a href='/connect/gemini'>Thu lai</a>`);
   }
 });
 
