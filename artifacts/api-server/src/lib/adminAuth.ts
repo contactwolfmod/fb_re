@@ -37,9 +37,10 @@ export const HAS_WEB_OAUTH_CLIENT = !!(GOOGLE_WEB_CLIENT_ID && GOOGLE_WEB_CLIENT
 // port: the browser simply fails to connect and the user copies the URL.
 export const GEMINI_LOOPBACK_REDIRECT_URI = "http://localhost:51121/oauth-callback";
 
-// Gemini Code Assist native endpoint (not OpenAI-compatible)
-export const GEMINI_BASE_URL = "https://cloudcode-pa.googleapis.com/v1internal";
-export const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
+// Antigravity native endpoint (not OpenAI-compatible). The old
+// cloudcode-pa.googleapis.com endpoint now rejects individual accounts.
+export const GEMINI_BASE_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal";
+export const GEMINI_DEFAULT_MODEL = "gemini-3.8-flash";
 
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
 // Kept in memory: these live for at most 10 minutes, so losing them on a

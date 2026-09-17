@@ -137,6 +137,7 @@ async function postCodeAssist<T>(accessToken: string, method: string, body: unkn
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
+      "User-Agent": "antigravity/cli/1.1.23 (aidev_client; os_type=linux; arch=amd64; cl=974125021; auth_method=consumer)",
     },
     body: JSON.stringify(body),
     signal,
