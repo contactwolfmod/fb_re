@@ -12,7 +12,7 @@ import {
   listServiceUsers,
   deleteServiceUser,
   setServiceUserActive,
-  getUserAiConfig,
+  listUserAiConfigs,
 } from "../lib/adminAuth";
 import { botState } from "../bot/state";
 
@@ -301,12 +301,16 @@ router.post("/admin/logout", (req: Request, res: Response) => {
 // ═══════════════════════════════════════════════════════
 // GET /admin  — dashboard
 // ═══════════════════════════════════════════════════════
-router.get("/admin", requireAdmin, (req: Request, res: Response) => {
-  const tokens = listUserTokens();
-  const accounts = listAiAccounts();
-  const serviceUsers = listServiceUsers();
+router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
+  const [tokens, accounts, serviceUsers, aiConfigs] = await Promise.all([
+    listUserTokens(),
+    listAiAccounts(),
+    listServiceUsers(),
+    listUserAiConfigs(),
+  ]);
+  const connectedOwnerKeys = new Set(aiConfigs.map(c => c.ownerKey));
   const activeUsers = serviceUsers.filter(user => user.active).length;
-  const geminiUsers = serviceUsers.filter(user => !!getUserAiConfig(user.id)).length;
+  const geminiUsers = serviceUsers.filter(user => connectedOwnerKeys.has(user.id)).length;
   const geminiOk = req.query["geminiOk"] as string | undefined;
   const geminiErr = req.query["geminiErr"] as string | undefined;
   const created = req.query["created"] as string | undefined;
@@ -359,7 +363,7 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
           <td>${modeBadge}${threadPreview}</td>
           <td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td>
           <td>${u.active ? `<span class="badge badge-ok">Hoạt động</span>` : `<span class="badge badge-exp">Đã khóa</span>`}</td>
-          <td>${getUserAiConfig(u.id) ? `<span class="badge badge-ok">Đã kết nối</span>` : `<span class="badge badge-used">Chưa kết nối</span>`}</td>
+          <td>${connectedOwnerKeys.has(u.id) ? `<span class="badge badge-ok">Đã kết nối</span>` : `<span class="badge badge-used">Chưa kết nối</span>`}</td>
           <td><div class="link-row" style="max-width:190px"><a href="${userUrl}" target="_blank" rel="noreferrer" class="mono" style="font-size:.74rem;color:#818cf8;display:inline-flex;align-items:center;gap:5px">/u/${u.id} ${icon("external", 12)}</a></div></td>
           <td style="white-space:nowrap">
             <form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost btn-sm" title="${u.active ? "Khóa" : "Mở khóa"}">${u.active ? icon("lock", 13) : icon("unlock", 13)} ${u.active ? "Khóa" : "Mở"}</button></form>
@@ -484,42 +488,42 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   `, { withScript: true }));
 });
 
-router.post("/admin/users/create", requireAdmin, (req: Request, res: Response) => {
+router.post("/admin/users/create", requireAdmin, async (req: Request, res: Response) => {
   const { id, name, password } = req.body as { id?: string; name?: string; password?: string };
   const safeId = id?.trim().toLowerCase() ?? "";
   if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin user không hợp lệ. ID dùng a-z, 0-9, -, dài 3-48; mật khẩu tối thiểu 8 ký tự."); return; }
-  try { createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password }); res.redirect("/admin"); }
+  try { await createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password }); res.redirect("/admin"); }
   catch (err: any) { res.status(409).send(err?.message ?? "Không tạo được user."); }
 });
-router.post("/admin/users/toggle", requireAdmin, (req: Request, res: Response) => { const { id, active } = req.body as { id?: string; active?: string }; if (id) setServiceUserActive(id, active === "1"); res.redirect("/admin"); });
-router.post("/admin/users/delete", requireAdmin, (req: Request, res: Response) => { const { id } = req.body as { id?: string }; if (id) deleteServiceUser(id); res.redirect("/admin"); });
+router.post("/admin/users/toggle", requireAdmin, async (req: Request, res: Response) => { const { id, active } = req.body as { id?: string; active?: string }; if (id) await setServiceUserActive(id, active === "1"); res.redirect("/admin"); });
+router.post("/admin/users/delete", requireAdmin, async (req: Request, res: Response) => { const { id } = req.body as { id?: string }; if (id) await deleteServiceUser(id); res.redirect("/admin"); });
 
-router.post("/admin/accounts/create", requireAdmin, (req: Request, res: Response) => {
+router.post("/admin/accounts/create", requireAdmin, async (req: Request, res: Response) => {
   const { name, baseUrl, apiKey, model } = req.body as { name?: string; baseUrl?: string; apiKey?: string; model?: string };
   if (!name || !baseUrl || !apiKey || !model) { res.status(400).send("Thiếu thông tin."); return; }
-  createAiAccount({ name: name.trim().slice(0, 80), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim().slice(0, 100) });
+  await createAiAccount({ name: name.trim().slice(0, 80), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim().slice(0, 100) });
   res.redirect("/admin?accCreated=1");
 });
 
-router.post("/admin/accounts/delete", requireAdmin, (req: Request, res: Response) => {
+router.post("/admin/accounts/delete", requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.body as { id?: string };
-  if (id) deleteAiAccount(id);
+  if (id) await deleteAiAccount(id);
   res.redirect("/admin?accDeleted=1");
 });
 
-router.post("/admin/links/create", requireAdmin, (req: Request, res: Response) => {
+router.post("/admin/links/create", requireAdmin, async (req: Request, res: Response) => {
   const { label, ttlHours, redirectUrl, aiAccountId, fbThreadId } = req.body as { label?: string; ttlHours?: string; redirectUrl?: string; aiAccountId?: string; fbThreadId?: string };
   if (!fbThreadId?.trim()) { res.status(400).send("Phải nhập FB Thread ID."); return; }
   const safeLabel = (label ?? "User").slice(0, 80);
   const ttl = Math.min(Math.max(Number(ttlHours ?? 24), 1), 720);
   const redirect = (redirectUrl ?? "").trim() || `${req.protocol}://${req.get("host")}/`;
-  createUserToken({ label: safeLabel, aiAccountId: aiAccountId ?? "", fbThreadId: fbThreadId.trim(), ttlHours: ttl, redirectUrl: redirect });
+  await createUserToken({ label: safeLabel, aiAccountId: aiAccountId ?? "", fbThreadId: fbThreadId.trim(), ttlHours: ttl, redirectUrl: redirect });
   res.redirect("/admin?created=1");
 });
 
-router.post("/admin/links/delete", requireAdmin, (req: Request, res: Response) => {
+router.post("/admin/links/delete", requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.body as { id?: string };
-  if (id) deleteUserToken(id);
+  if (id) await deleteUserToken(id);
   res.redirect("/admin?deleted=1");
 });
 

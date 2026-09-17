@@ -1,5 +1,7 @@
-﻿import { type Request, type Response, type NextFunction } from "express";
+import { type Request, type Response, type NextFunction } from "express";
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { eq, lt } from "drizzle-orm";
+import { db, serviceUsersTable, aiAccountsTable, userTokensTable, userAiConfigsTable } from "@workspace/db";
 
 // Admin token from env (required). If not set, admin routes return 503.
 export const ADMIN_TOKEN = process.env["ADMIN_TOKEN"] ?? "";
@@ -14,6 +16,8 @@ export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta
 export const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
 
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
+// Kept in memory: these live for at most 10 minutes, so losing them on a
+// redeploy just means restarting an in-progress OAuth flow — not real data.
 const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; ownerKey?: string; userTokenId?: string; serviceUserId?: string }>();
 
 export function createOAuthState(isAdmin: boolean, ownerKey?: string, userTokenId?: string, serviceUserId?: string): string {
@@ -39,7 +43,8 @@ setInterval(() => {
   }
 }, 600_000);
 
-
+// ── AI provider accounts (Claude / 9Router / OpenRouter / ...) ─────────────────
+// Persisted in Postgres so accounts survive redeploys.
 export interface AiAccount {
   id: string;
   name: string;       // display name e.g. "9Router Production"
@@ -49,28 +54,27 @@ export interface AiAccount {
   createdAt: number;
 }
 
-const aiAccounts = new Map<string, AiAccount>();
-
-export function createAiAccount(opts: { name: string; baseUrl: string; apiKey: string; model: string }): AiAccount {
-  const id = randomUUID();
-  const acc: AiAccount = { id, name: opts.name, baseUrl: opts.baseUrl, apiKey: opts.apiKey, model: opts.model, createdAt: Date.now() };
-  aiAccounts.set(id, acc);
+export async function createAiAccount(opts: { name: string; baseUrl: string; apiKey: string; model: string }): Promise<AiAccount> {
+  const acc: AiAccount = { id: randomUUID(), name: opts.name, baseUrl: opts.baseUrl, apiKey: opts.apiKey, model: opts.model, createdAt: Date.now() };
+  await db.insert(aiAccountsTable).values(acc);
   return acc;
 }
 
-export function getAiAccount(id: string): AiAccount | undefined {
-  return aiAccounts.get(id);
+export async function getAiAccount(id: string): Promise<AiAccount | undefined> {
+  const [row] = await db.select().from(aiAccountsTable).where(eq(aiAccountsTable.id, id));
+  return row;
 }
 
-export function listAiAccounts(): AiAccount[] {
-  return [...aiAccounts.values()].sort((a, b) => a.createdAt - b.createdAt);
+export async function listAiAccounts(): Promise<AiAccount[]> {
+  const rows = await db.select().from(aiAccountsTable);
+  return rows.sort((a, b) => a.createdAt - b.createdAt);
 }
 
-export function deleteAiAccount(id: string): void {
-  aiAccounts.delete(id);
+export async function deleteAiAccount(id: string): Promise<void> {
+  await db.delete(aiAccountsTable).where(eq(aiAccountsTable.id, id));
 }
 
-// ── User-facing connect tokens ───────────────────────────────────────────────
+// ── User-facing connect tokens (legacy one-off flow) ───────────────────────────
 export interface UserToken {
   id: string;
   label: string;
@@ -83,41 +87,42 @@ export interface UserToken {
   redirectUrl: string;
 }
 
-const userTokens = new Map<string, UserToken>();
-
-export function createUserToken(opts: { label: string; aiAccountId: string; fbThreadId: string; ttlHours: number; redirectUrl: string }): UserToken {
-  const id = randomUUID();
+export async function createUserToken(opts: { label: string; aiAccountId: string; fbThreadId: string; ttlHours: number; redirectUrl: string }): Promise<UserToken> {
   const now = Date.now();
   const token: UserToken = {
-    id, label: opts.label, aiAccountId: opts.aiAccountId, fbThreadId: opts.fbThreadId,
+    id: randomUUID(), label: opts.label, aiAccountId: opts.aiAccountId, fbThreadId: opts.fbThreadId,
     createdAt: now, expiresAt: now + opts.ttlHours * 3_600_000,
     usedAt: null, usedByLabel: "", redirectUrl: opts.redirectUrl,
   };
-  userTokens.set(id, token);
+  await db.insert(userTokensTable).values(token);
   return token;
 }
 
-export function getUserToken(id: string): UserToken | undefined {
-  return userTokens.get(id);
+export async function getUserToken(id: string): Promise<UserToken | undefined> {
+  const [row] = await db.select().from(userTokensTable).where(eq(userTokensTable.id, id));
+  return row;
 }
 
-export function markUserTokenUsed(id: string, byLabel?: string): void {
-  const t = userTokens.get(id);
-  if (t) { t.usedAt = Date.now(); if (byLabel) t.usedByLabel = byLabel.slice(0, 120); }
+export async function markUserTokenUsed(id: string, byLabel?: string): Promise<void> {
+  await db.update(userTokensTable)
+    .set({ usedAt: Date.now(), ...(byLabel ? { usedByLabel: byLabel.slice(0, 120) } : {}) })
+    .where(eq(userTokensTable.id, id));
 }
 
-export function deleteUserToken(id: string): void { userTokens.delete(id); }
+export async function deleteUserToken(id: string): Promise<void> {
+  await db.delete(userTokensTable).where(eq(userTokensTable.id, id));
+}
 
-export function listUserTokens(): UserToken[] {
-  return [...userTokens.values()].sort((a, b) => b.createdAt - a.createdAt);
+export async function listUserTokens(): Promise<UserToken[]> {
+  const rows = await db.select().from(userTokensTable);
+  return rows.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 setInterval(() => {
-  const now = Date.now();
-  for (const [id, t] of userTokens.entries()) { if (t.expiresAt < now) userTokens.delete(id); }
+  db.delete(userTokensTable).where(lt(userTokensTable.expiresAt, Date.now())).catch(() => {});
 }, 600_000);
 
-// ── Per-user Gemini AI config ─────────────────────────────────────────────────
+// ── Per-owner Gemini AI config ─────────────────────────────────────────────────
 // Keyed by "ownerKey": a service user's ID for the self-service flow, or a raw
 // FB thread ID for the legacy one-off connect-link flow (no service user account).
 export interface UserAiConfig {
@@ -129,21 +134,40 @@ export interface UserAiConfig {
   connectedAt: number;
 }
 
-const userAiConfigs = new Map<string, UserAiConfig>();
-
-export function setUserAiConfig(config: UserAiConfig): void {
-  userAiConfigs.set(config.ownerKey, config);
+export async function setUserAiConfig(config: UserAiConfig): Promise<void> {
+  const values = { ...config, refreshToken: config.refreshToken ?? null };
+  await db.insert(userAiConfigsTable).values(values).onConflictDoUpdate({
+    target: userAiConfigsTable.ownerKey,
+    set: {
+      accessToken: values.accessToken,
+      refreshToken: values.refreshToken,
+      tokenExpiry: values.tokenExpiry,
+      model: values.model,
+      connectedAt: values.connectedAt,
+    },
+  });
 }
 
-export function getUserAiConfig(ownerKey: string): UserAiConfig | undefined {
-  return userAiConfigs.get(ownerKey);
+export async function getUserAiConfig(ownerKey: string): Promise<UserAiConfig | undefined> {
+  const [row] = await db.select().from(userAiConfigsTable).where(eq(userAiConfigsTable.ownerKey, ownerKey));
+  if (!row) return undefined;
+  return { ...row, refreshToken: row.refreshToken ?? undefined };
 }
 
-export function updateUserAiModel(ownerKey: string, model: string): boolean {
-  const config = userAiConfigs.get(ownerKey);
-  if (!config) return false;
-  config.model = model;
-  return true;
+export async function updateUserAiModel(ownerKey: string, model: string): Promise<boolean> {
+  const result = await db.update(userAiConfigsTable).set({ model })
+    .where(eq(userAiConfigsTable.ownerKey, ownerKey))
+    .returning({ ownerKey: userAiConfigsTable.ownerKey });
+  return result.length > 0;
+}
+
+export async function deleteUserAiConfig(ownerKey: string): Promise<void> {
+  await db.delete(userAiConfigsTable).where(eq(userAiConfigsTable.ownerKey, ownerKey));
+}
+
+export async function listUserAiConfigs(): Promise<UserAiConfig[]> {
+  const rows = await db.select().from(userAiConfigsTable);
+  return rows.map(row => ({ ...row, refreshToken: row.refreshToken ?? undefined })).sort((a, b) => b.connectedAt - a.connectedAt);
 }
 
 export async function fetchGeminiModels(accessToken: string): Promise<string[]> {
@@ -179,18 +203,12 @@ export async function fetchGeminiModels(accessToken: string): Promise<string[]> 
   return fallbackModels;
 }
 
-export function deleteUserAiConfig(ownerKey: string): void {
-  userAiConfigs.delete(ownerKey);
-}
-
-export function listUserAiConfigs(): UserAiConfig[] {
-  return [...userAiConfigs.values()].sort((a, b) => b.connectedAt - a.connectedAt);
-}
-
-// ── Managed service users ─────────────────────────────────────────────────────
-// Reply mode is self-configured by the service user from their own /u/:id page:
-// "all" = auto-reply to every incoming Messenger conversation, "specific" = only
-// the FB thread IDs they've explicitly added to threadIds.
+// ── Managed service users (customers) ───────────────────────────────────────────
+// Persisted in Postgres so customer accounts, passwords, and reply
+// configuration survive redeploys. Reply mode is self-configured by the
+// service user from their own /u/:id page: "all" = auto-reply to every
+// incoming Messenger conversation, "specific" = only the FB thread IDs
+// they've explicitly added to threadIds.
 export type ReplyMode = "all" | "specific";
 
 export interface ServiceUser {
@@ -203,7 +221,8 @@ export interface ServiceUser {
   createdAt: number;
 }
 
-const serviceUsers = new Map<string, ServiceUser>();
+// Sessions are short-lived (7 days) and cheap to re-establish (just log back
+// in), so they stay in memory rather than adding a table for them.
 const userSessions = new Map<string, { userId: string; expiresAt: number }>();
 const validThreadId = /^\d{5,32}$/;
 const MAX_THREADS_PER_USER = 50;
@@ -223,44 +242,63 @@ function verifyPassword(password: string, stored: string): boolean {
   return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
-export function createServiceUser(opts: { id: string; name: string; password: string }): ServiceUser {
-  const id = opts.id.toLowerCase();
-  if (serviceUsers.has(id)) throw new Error("ID nguoi dung da ton tai.");
-  const user: ServiceUser = {
-    id, name: opts.name, passwordHash: hashPassword(opts.password),
-    replyMode: "specific", threadIds: [], active: true, createdAt: Date.now(),
+function toServiceUser(row: typeof serviceUsersTable.$inferSelect): ServiceUser {
+  return {
+    id: row.id,
+    name: row.name,
+    passwordHash: row.passwordHash,
+    replyMode: row.replyMode === "all" ? "all" : "specific",
+    threadIds: row.threadIds ?? [],
+    active: row.active,
+    createdAt: row.createdAt,
   };
-  serviceUsers.set(id, user);
-  return user;
 }
 
-export function getServiceUser(id: string): ServiceUser | undefined { return serviceUsers.get(id.toLowerCase()); }
-export function listServiceUsers(): ServiceUser[] { return [...serviceUsers.values()].sort((a, b) => b.createdAt - a.createdAt); }
-
-export function setServiceUserReplyMode(id: string, mode: ReplyMode): boolean {
-  const user = getServiceUser(id);
-  if (!user) return false;
-  user.replyMode = mode;
-  return true;
+export async function createServiceUser(opts: { id: string; name: string; password: string }): Promise<ServiceUser> {
+  const id = opts.id.toLowerCase();
+  if (await getServiceUser(id)) throw new Error("ID nguoi dung da ton tai.");
+  const row = {
+    id, name: opts.name, passwordHash: hashPassword(opts.password),
+    replyMode: "specific" as const, threadIds: [] as string[], active: true, createdAt: Date.now(),
+  };
+  await db.insert(serviceUsersTable).values(row);
+  return row;
 }
 
-export function addServiceUserThread(id: string, threadId: string): { ok: boolean; error?: string } {
-  const user = getServiceUser(id);
+export async function getServiceUser(id: string): Promise<ServiceUser | undefined> {
+  const [row] = await db.select().from(serviceUsersTable).where(eq(serviceUsersTable.id, id.toLowerCase()));
+  return row ? toServiceUser(row) : undefined;
+}
+
+export async function listServiceUsers(): Promise<ServiceUser[]> {
+  const rows = await db.select().from(serviceUsersTable);
+  return rows.map(toServiceUser).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function setServiceUserReplyMode(id: string, mode: ReplyMode): Promise<boolean> {
+  const result = await db.update(serviceUsersTable).set({ replyMode: mode })
+    .where(eq(serviceUsersTable.id, id.toLowerCase()))
+    .returning({ id: serviceUsersTable.id });
+  return result.length > 0;
+}
+
+export async function addServiceUserThread(id: string, threadId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getServiceUser(id);
   if (!user) return { ok: false, error: "Khong tim thay user." };
   const clean = threadId.trim();
   if (!validThreadId.test(clean)) return { ok: false, error: "Thread ID khong hop le (chi gom chu so, 5-32 ky tu)." };
   if (user.threadIds.includes(clean)) return { ok: false, error: "Thread ID nay da duoc them." };
   if (user.threadIds.length >= MAX_THREADS_PER_USER) return { ok: false, error: "Da dat gioi han so hoi thoai." };
-  user.threadIds.push(clean);
+  await db.update(serviceUsersTable).set({ threadIds: [...user.threadIds, clean] }).where(eq(serviceUsersTable.id, user.id));
   return { ok: true };
 }
 
-export function removeServiceUserThread(id: string, threadId: string): boolean {
-  const user = getServiceUser(id);
-  if (!user) return false;
-  const idx = user.threadIds.indexOf(threadId);
-  if (idx === -1) return false;
-  user.threadIds.splice(idx, 1);
+export async function removeServiceUserThread(id: string, threadId: string): Promise<boolean> {
+  const user = await getServiceUser(id);
+  if (!user || !user.threadIds.includes(threadId)) return false;
+  await db.update(serviceUsersTable)
+    .set({ threadIds: user.threadIds.filter(t => t !== threadId) })
+    .where(eq(serviceUsersTable.id, user.id));
   return true;
 }
 
@@ -269,9 +307,10 @@ export function removeServiceUserThread(id: string, threadId: string): boolean {
  * match in their specific thread list wins; otherwise the earliest-created
  * active user in "reply all" mode acts as the default responder.
  */
-export function resolveServiceUserForThread(threadId: string): ServiceUser | undefined {
+export async function resolveServiceUserForThread(threadId: string): Promise<ServiceUser | undefined> {
+  const users = await listServiceUsers();
+  const byAge = [...users].sort((a, b) => a.createdAt - b.createdAt);
   let fallbackAll: ServiceUser | undefined;
-  const byAge = [...serviceUsers.values()].sort((a, b) => a.createdAt - b.createdAt);
   for (const user of byAge) {
     if (!user.active) continue;
     if (user.replyMode === "specific" && user.threadIds.includes(threadId)) return user;
@@ -279,30 +318,36 @@ export function resolveServiceUserForThread(threadId: string): ServiceUser | und
   }
   return fallbackAll;
 }
-export function deleteServiceUser(id: string): void {
-  serviceUsers.delete(id.toLowerCase());
-  for (const [sessionId, session] of userSessions) if (session.userId === id.toLowerCase()) userSessions.delete(sessionId);
+
+export async function deleteServiceUser(id: string): Promise<void> {
+  const lowered = id.toLowerCase();
+  await db.delete(serviceUsersTable).where(eq(serviceUsersTable.id, lowered));
+  for (const [sessionId, session] of userSessions) if (session.userId === lowered) userSessions.delete(sessionId);
 }
-export function setServiceUserActive(id: string, active: boolean): void {
-  const user = getServiceUser(id);
-  if (user) user.active = active;
+
+export async function setServiceUserActive(id: string, active: boolean): Promise<void> {
+  await db.update(serviceUsersTable).set({ active }).where(eq(serviceUsersTable.id, id.toLowerCase()));
 }
+
 export function createUserSession(userId: string): string {
   const sessionId = randomBytes(32).toString("hex");
   userSessions.set(sessionId, { userId, expiresAt: Date.now() + 7 * 24 * 3_600_000 });
   return sessionId;
 }
-export function authenticateServiceUser(id: string, password: string): ServiceUser | undefined {
-  const user = getServiceUser(id);
+
+export async function authenticateServiceUser(id: string, password: string): Promise<ServiceUser | undefined> {
+  const user = await getServiceUser(id);
   return user?.active && verifyPassword(password, user.passwordHash) ? user : undefined;
 }
-export function getSessionUser(sessionId?: string): ServiceUser | undefined {
+
+export async function getSessionUser(sessionId?: string): Promise<ServiceUser | undefined> {
   if (!sessionId) return undefined;
   const session = userSessions.get(sessionId);
   if (!session || session.expiresAt < Date.now()) { userSessions.delete(sessionId); return undefined; }
-  const user = getServiceUser(session.userId);
+  const user = await getServiceUser(session.userId);
   return user?.active ? user : undefined;
 }
+
 export function deleteUserSession(sessionId?: string): void { if (sessionId) userSessions.delete(sessionId); }
 
 // ── Middleware ────────────────────────────────────────────────────────────────

@@ -66,16 +66,16 @@ app.get("/", (req: Request, res: Response, next: NextFunction) => {
 // ── Google Gemini OAuth flow ──────────────────────────────────────────────────
 const GEMINI_SCOPES = "https://www.googleapis.com/auth/generative-language";
 
-app.get("/connect/gemini", (req: Request, res: Response) => {
+app.get("/connect/gemini", async (req: Request, res: Response) => {
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
   const isAdmin = !!(ADMIN_TOKEN && adminCookie === ADMIN_TOKEN);
   const userTokenId = req.query["userToken"] as string | undefined;
-  const serviceUser = getSessionUser((req as any).cookies?.userSession);
+  const serviceUser = await getSessionUser((req as any).cookies?.userSession);
+  const ut = userTokenId ? await getUserToken(userTokenId) : undefined;
 
   // Validate access: admin, logged-in service user, or legacy one-time link
   if (!isAdmin && !serviceUser) {
     if (!userTokenId) { res.status(401).send("Yeu cau dang nhap admin hoac co link hop le."); return; }
-    const ut = getUserToken(userTokenId);
     if (!ut || ut.expiresAt < Date.now() || ut.usedAt) {
       res.status(403).send("Link het han hoac da duoc su dung roi."); return;
     }
@@ -97,7 +97,6 @@ app.get("/connect/gemini", (req: Request, res: Response) => {
     return;
   }
 
-  const ut = userTokenId ? getUserToken(userTokenId) : undefined;
   // Service-user flow: key the resulting AI config by their account ID (shared
   // across all of their configured threads). Legacy one-off flow: key by the
   // raw FB thread ID from the connect link, as before.
@@ -156,7 +155,7 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
     if (ownerKey) {
       // Per-user flow: save to UserAiConfig keyed by owner (service user ID, or
       // raw FB thread ID for the legacy one-off connect-link flow)
-      setUserAiConfig({
+      await setUserAiConfig({
         ownerKey,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
@@ -164,7 +163,7 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
         model: GEMINI_DEFAULT_MODEL,
         connectedAt: Date.now(),
       });
-      if (userTokenId) markUserTokenUsed(userTokenId, "gemini-oauth");
+      if (userTokenId) await markUserTokenUsed(userTokenId, "gemini-oauth");
       if (serviceUserId) {
         res.redirect(`/u/${encodeURIComponent(serviceUserId)}?geminiOk=1`);
         return;
@@ -211,10 +210,10 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
 
 
 
-app.post("/connect/gemini/select-model", (req: Request, res: Response) => {
+app.post("/connect/gemini/select-model", async (req: Request, res: Response) => {
   const { ownerKey, model } = req.body as { ownerKey?: string; model?: string };
   if (ownerKey && model) {
-    updateUserAiModel(ownerKey, model.replace(/^models\//, "").trim());
+    await updateUserAiModel(ownerKey, model.replace(/^models\//, "").trim());
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cai dat thanh cong</title>

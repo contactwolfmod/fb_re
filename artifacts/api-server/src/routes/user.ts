@@ -27,8 +27,8 @@ function page(title: string, body: string) {
 </style><body><main class="wrap">${body}</main></body></html>`;
 }
 
-function current(req: Request, id: string) {
-  const u = getSessionUser((req as any).cookies?.userSession);
+async function current(req: Request, id: string) {
+  const u = await getSessionUser((req as any).cookies?.userSession);
   return u?.id === id ? u : undefined;
 }
 
@@ -71,10 +71,10 @@ function replyModeCard(id: string, user: ServiceUser) {
 
 router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
   const id = (req.params.id as string).toLowerCase();
-  const user = getServiceUser(id);
+  const user = await getServiceUser(id);
   if (!validId.test(id) || !user) { res.status(404).send("Không tìm thấy trang."); return; }
 
-  if (!current(req, id)) {
+  if (!(await current(req, id))) {
     const err = req.query["err"] ? `<div class="alert alert-err">Mật khẩu không đúng.</div>` : "";
     res.send(page("Đăng nhập", `<div class="card" style="max-width:420px;margin:60px auto">
       <h2 style="margin-top:0">${esc(user.name)}</h2>
@@ -89,7 +89,7 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const c = getUserAiConfig(user.id);
+  const c = await getUserAiConfig(user.id);
   const geminiOk = req.query["geminiOk"] ? `<div class="alert alert-ok">&#x2705; Đã kết nối tài khoản Google thành công! Hãy chọn model Gemini bên dưới.</div>` : "";
   const modelSaved = req.query["modelSaved"] ? `<div class="alert alert-ok">&#x2705; Đã cập nhật model Gemini thành công! Bot Facebook sẽ trả lời bằng model này.</div>` : "";
   const modelErr = req.query["modelErr"] ? `<div class="alert alert-err">&#x26A0; Không lưu được model. Vui lòng kiểm tra lại.</div>` : "";
@@ -175,38 +175,38 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
     </script>
   `));
 });
-router.post("/u/:id/login", (req,res) => { const id=req.params.id.toLowerCase(); const u=authenticateServiceUser(id,String(req.body.password??"")); if(!u)return res.redirect(`/u/${id}?err=1`); res.cookie("userSession",createUserSession(id),{httpOnly:true,sameSite:"lax",secure:req.secure,maxAge:604800000});res.redirect(`/u/${id}`); });
+router.post("/u/:id/login", async (req,res) => { const id=req.params.id.toLowerCase(); const u=await authenticateServiceUser(id,String(req.body.password??"")); if(!u)return res.redirect(`/u/${id}?err=1`); res.cookie("userSession",createUserSession(id),{httpOnly:true,sameSite:"lax",secure:req.secure,maxAge:604800000});res.redirect(`/u/${id}`); });
 router.post("/u/:id/logout",(req,res)=>{deleteUserSession((req as any).cookies?.userSession);res.clearCookie("userSession");res.redirect(`/u/${req.params.id}`)});
-router.get("/u/:id/gemini", (req, res) => { const u=current(req,req.params.id.toLowerCase()); if(!u)return res.redirect(`/u/${req.params.id}`); res.redirect("/connect/gemini"); });
-router.post("/u/:id/model", (req: Request, res: Response) => {
+router.get("/u/:id/gemini", async (req, res) => { const u=await current(req,req.params.id.toLowerCase()); if(!u)return res.redirect(`/u/${req.params.id}`); res.redirect("/connect/gemini"); });
+router.post("/u/:id/model", async (req: Request, res: Response) => {
   const id = (req.params.id as string).toLowerCase();
-  const u = current(req, id);
+  const u = await current(req, id);
   const rawModel = String(req.body.customModel?.trim() || req.body.model?.trim() || "");
   const cleanModel = rawModel.replace(/^models\//, "").trim();
-  if (!u || !validModel.test(cleanModel) || !updateUserAiModel(u.id, cleanModel)) {
+  if (!u || !validModel.test(cleanModel) || !(await updateUserAiModel(u.id, cleanModel))) {
     res.redirect(`/u/${id}?modelErr=1`);
     return;
   }
   res.redirect(`/u/${id}?modelSaved=1`);
 });
-router.post("/u/:id/reply-mode", (req: Request, res: Response) => {
+router.post("/u/:id/reply-mode", async (req: Request, res: Response) => {
   const id = (req.params.id as string).toLowerCase();
-  const u = current(req, id);
-  if (u) setServiceUserReplyMode(id, req.body.mode === "all" ? "all" : "specific");
+  const u = await current(req, id);
+  if (u) await setServiceUserReplyMode(id, req.body.mode === "all" ? "all" : "specific");
   res.redirect(`/u/${id}`);
 });
-router.post("/u/:id/threads/add", (req: Request, res: Response) => {
+router.post("/u/:id/threads/add", async (req: Request, res: Response) => {
   const id = (req.params.id as string).toLowerCase();
-  const u = current(req, id);
+  const u = await current(req, id);
   if (!u) { res.redirect(`/u/${id}`); return; }
-  const result = addServiceUserThread(id, String(req.body.threadId ?? ""));
+  const result = await addServiceUserThread(id, String(req.body.threadId ?? ""));
   res.redirect(result.ok ? `/u/${id}` : `/u/${id}?threadErr=${encodeURIComponent(result.error ?? "Loi khong xac dinh.")}`);
 });
-router.post("/u/:id/threads/remove", (req: Request, res: Response) => {
+router.post("/u/:id/threads/remove", async (req: Request, res: Response) => {
   const id = (req.params.id as string).toLowerCase();
-  const u = current(req, id);
-  if (u) removeServiceUserThread(id, String(req.body.threadId ?? ""));
+  const u = await current(req, id);
+  if (u) await removeServiceUserThread(id, String(req.body.threadId ?? ""));
   res.redirect(`/u/${id}`);
 });
-router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,botState.systemPrompt)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
+router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,botState.systemPrompt)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
 export default router;

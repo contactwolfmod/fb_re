@@ -46,14 +46,14 @@ interface ResolvedClient {
   maxTokens: number;
 }
 
-function resolveClient(threadId?: string): ResolvedClient {
+async function resolveClient(threadId?: string): Promise<ResolvedClient> {
   // Per-user Gemini config takes highest priority. Resolve the owning service
   // user first (their config is keyed by their account ID, shared across all
   // of their configured threads); fall back to the raw threadId for the
   // legacy one-off connect-link flow that has no service user account.
   if (threadId) {
-    const owner = resolveServiceUserForThread(threadId);
-    const userConfig = getUserAiConfig(owner?.id ?? threadId);
+    const owner = await resolveServiceUserForThread(threadId);
+    const userConfig = await getUserAiConfig(owner?.id ?? threadId);
     if (userConfig && userConfig.accessToken) {
       return {
         provider: "openai-compat",
@@ -109,7 +109,7 @@ export async function getClaudeReply(
   history.push({ role: "user", content: userMessage });
   if (history.length > 10) history.splice(0, history.length - 10);
 
-  const { provider, anthropicClient, openaiClient, model, timeoutMs, maxTokens } = resolveClient(threadId);
+  const { provider, anthropicClient, openaiClient, model, timeoutMs, maxTokens } = await resolveClient(threadId);
   logger.info({ threadId, model, provider }, "Calling AI API");
 
   try {

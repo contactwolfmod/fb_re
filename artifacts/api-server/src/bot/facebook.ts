@@ -300,8 +300,8 @@ async function handleMessage(
   // Check per-user Gemini config — resolve the service user who owns this
   // thread (via their "reply all" default or their specific thread list)
   // first, since their config is keyed by account ID, not by thread ID.
-  const owner = resolveServiceUserForThread(threadId);
-  const userAiConfig = getUserAiConfig(owner?.id ?? threadId);
+  const owner = await resolveServiceUserForThread(threadId);
+  const userAiConfig = await getUserAiConfig(owner?.id ?? threadId);
   const hasGlobalAi = !!(botState.aiBaseUrl && botState.aiApiKey);
   const hasStaticAi = !!(
     process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"] ||
@@ -311,7 +311,7 @@ async function handleMessage(
   );
   if (!userAiConfig && !hasGlobalAi && !hasStaticAi) {
     // No AI for this thread — send connect link if available
-    const tokens = listUserTokens();
+    const tokens = await listUserTokens();
     const userToken = tokens.find(
       (t) => t.fbThreadId === threadId && !t.usedAt && t.expiresAt > Date.now()
     );
