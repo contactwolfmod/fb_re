@@ -6,18 +6,17 @@ import { db, serviceUsersTable, aiAccountsTable, userTokensTable, userAiConfigsT
 // Admin token from env (required). If not set, admin routes return 503.
 export const ADMIN_TOKEN = process.env["ADMIN_TOKEN"] ?? "";
 
-// Public installed-app OAuth client used by Gemini CLI / Code Assist.
-// Secret is embedded by Google in the open-source CLI; for installed apps it is
-// not treated as confidential.
-const GEMINI_CLI_CLIENT_ID_PARTS = [
-  "681255809395",
-  "oo8ft2oprdrnp9e3aqf6av3hmdib135j",
+// Public installed-app OAuth client used by Google Antigravity. Gemini CLI's
+// older client now returns "no longer supported for Gemini Code Assist for
+// individuals", so the built-in fallback uses the Antigravity client instead.
+const ANTIGRAVITY_CLIENT_ID_PARTS = [
+  "1071006060591",
+  "tmhssin2h21lcre235vtolojh4g403ep",
   "apps.googleusercontent.com",
 ];
-const GEMINI_CLI_CLIENT_SECRET_PARTS = ["GOCSPX", "4uHgMPm", "1o7Sk", "geV6Cu5clXFsxl"];
 
-export const GOOGLE_CLIENT_ID = `${GEMINI_CLI_CLIENT_ID_PARTS[0]}-${GEMINI_CLI_CLIENT_ID_PARTS[1]}.${GEMINI_CLI_CLIENT_ID_PARTS[2]}`;
-export const GOOGLE_CLIENT_SECRET = GEMINI_CLI_CLIENT_SECRET_PARTS.join("-");
+export const GOOGLE_CLIENT_ID = `${ANTIGRAVITY_CLIENT_ID_PARTS[0]}-${ANTIGRAVITY_CLIENT_ID_PARTS[1]}.${ANTIGRAVITY_CLIENT_ID_PARTS[2]}`;
+export const GOOGLE_CLIENT_SECRET = "";
 
 // The built-in client above is registered by Google as an *installed* (desktop)
 // app, so Google only accepts loopback redirect URIs for it. A hosted

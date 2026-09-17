@@ -68,12 +68,14 @@ app.get("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 // ── Google Gemini OAuth flow ──────────────────────────────────────────────────
-// Match Gemini CLI / Code Assist OAuth. These scopes work with cloudcode-pa and
-// avoid requiring each deployment to own a Google OAuth consent screen.
+// Match Antigravity / Code Assist OAuth. These scopes work with cloudcode-pa and
+// avoid requiring each deployment to own a verified Google OAuth consent screen.
 const GEMINI_SCOPES = [
   "https://www.googleapis.com/auth/cloud-platform",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
+  "https://www.googleapis.com/auth/cclog",
+  "https://www.googleapis.com/auth/experimentsandconfigs",
 ].join(" ");
 
 app.get("/connect/gemini", async (req: Request, res: Response) => {
@@ -174,13 +176,18 @@ async function exchangeGeminiCode(
   clientSecret: string,
   redirectUri: string,
 ): Promise<GoogleTokens> {
+  const tokenParams = new URLSearchParams({
+    code,
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    grant_type: "authorization_code",
+  });
+  if (clientSecret) tokenParams.set("client_secret", clientSecret);
+
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code, client_id: clientId, client_secret: clientSecret,
-      redirect_uri: redirectUri, grant_type: "authorization_code",
-    }).toString(),
+    body: tokenParams.toString(),
     signal: AbortSignal.timeout(10_000),
   } as RequestInit & { signal: AbortSignal });
 
