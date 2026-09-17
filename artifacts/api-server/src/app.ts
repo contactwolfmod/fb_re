@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
 import path from "path";
 import fs from "fs";
+import { createHash, randomBytes } from "crypto";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { botState } from "./bot/state";
@@ -17,6 +18,9 @@ import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUse
 const app: Express = express();
 const validModel = /^[a-zA-Z0-9._:/-]{2,100}$/;
 const esc = (s: string) => s.replace(/[&<>\"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;", "'":"&#39;" })[c]!);
+const base64Url = (buf: Buffer) => buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+const createPkceVerifier = () => base64Url(randomBytes(48));
+const createPkceChallenge = (verifier: string) => base64Url(createHash("sha256").update(verifier).digest());
 
 // Railway terminates TLS at its edge proxy and forwards plain HTTP to this
 // container. Without trusting that proxy, Express's req.protocol/req.secure
@@ -102,10 +106,10 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
   // across all of their configured threads). Legacy one-off flow: key by the
   // raw FB thread ID from the connect link, as before.
   const ownerKey = serviceUser?.id ?? ut?.fbThreadId;
-  const state = createOAuthState(isAdmin, ownerKey, userTokenId, serviceUser?.id);
 
   // Web OAuth client (deployment-owned): normal hosted redirect flow.
   if (HAS_WEB_OAUTH_CLIENT) {
+    const state = createOAuthState(isAdmin, ownerKey, userTokenId, serviceUser?.id);
     const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
     const params = new URLSearchParams({
       client_id: GOOGLE_WEB_CLIENT_ID,
@@ -120,14 +124,16 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
     return;
   }
 
-  renderLoopbackConnectPage(res, state);
+  const codeVerifier = createPkceVerifier();
+  const state = createOAuthState(isAdmin, ownerKey, userTokenId, serviceUser?.id, codeVerifier);
+  renderLoopbackConnectPage(res, state, undefined, createPkceChallenge(codeVerifier));
 });
 
 // Built-in installed-app client: Google only accepts a loopback redirect, so
 // send the user to Google and have them paste back the resulting URL/code.
 // This client is Google's own published Gemini CLI app, so it works for any
 // Google account without the deployment owning a verified consent screen.
-function renderLoopbackConnectPage(res: Response, state: string, notice?: string): void {
+function renderLoopbackConnectPage(res: Response, state: string, notice?: string, codeChallenge?: string): void {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GEMINI_LOOPBACK_REDIRECT_URI,
@@ -137,6 +143,10 @@ function renderLoopbackConnectPage(res: Response, state: string, notice?: string
     prompt: "consent select_account",
     state,
   });
+  if (codeChallenge) {
+    params.set("code_challenge", codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   const noticeHtml = notice
     ? `<p style="background:#2a1b1b;border:1px solid #5b2b2b;color:#fca5a5;border-radius:8px;padding:12px;font-size:13px;margin:0 0 16px">${notice}</p>`
@@ -175,6 +185,7 @@ async function exchangeGeminiCode(
   clientId: string,
   clientSecret: string,
   redirectUri: string,
+  codeVerifier?: string,
 ): Promise<GoogleTokens> {
   const tokenParams = new URLSearchParams({
     code,
@@ -183,6 +194,7 @@ async function exchangeGeminiCode(
     grant_type: "authorization_code",
   });
   if (clientSecret) tokenParams.set("client_secret", clientSecret);
+  if (codeVerifier) tokenParams.set("code_verifier", codeVerifier);
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -219,14 +231,16 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
   // test-user list. Rather than dead-end them, retry with Google's own published
   // Gemini CLI client via the loopback paste flow, which any account can use.
   if (error === "access_denied" && stateData) {
+    const retryVerifier = createPkceVerifier();
     const retryState = createOAuthState(
-      stateData.isAdmin, stateData.ownerKey, stateData.userTokenId, stateData.serviceUserId,
+      stateData.isAdmin, stateData.ownerKey, stateData.userTokenId, stateData.serviceUserId, retryVerifier,
     );
     logger.warn({ ownerKey: stateData.ownerKey }, "Gemini web-client consent denied, falling back to loopback flow");
     renderLoopbackConnectPage(
       res,
       retryState,
       "Google đã từ chối ứng dụng riêng của hệ thống (access_denied). Hãy dùng cách kết nối thay thế bên dưới — cách này hoạt động với mọi tài khoản Google.",
+      createPkceChallenge(retryVerifier),
     );
     return;
   }
@@ -351,6 +365,7 @@ app.post("/connect/gemini/paste-code", async (req: Request, res: Response) => {
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
       GEMINI_LOOPBACK_REDIRECT_URI,
+      stateData.codeVerifier,
     );
     await finishGeminiConnect(res, tokens, stateData);
   } catch (err: any) {

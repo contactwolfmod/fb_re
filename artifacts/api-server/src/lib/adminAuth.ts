@@ -16,7 +16,9 @@ const ANTIGRAVITY_CLIENT_ID_PARTS = [
 ];
 
 export const GOOGLE_CLIENT_ID = `${ANTIGRAVITY_CLIENT_ID_PARTS[0]}-${ANTIGRAVITY_CLIENT_ID_PARTS[1]}.${ANTIGRAVITY_CLIENT_ID_PARTS[2]}`;
-export const GOOGLE_CLIENT_SECRET = "";
+// Antigravity uses OAuth Authorization Code with PKCE. No built-in secret is
+// needed for the loopback paste-code flow.
+export const GOOGLE_CLIENT_SECRET = process.env["ANTIGRAVITY_CLIENT_SECRET"] ?? "";
 
 // The built-in client above is registered by Google as an *installed* (desktop)
 // app, so Google only accepts loopback redirect URIs for it. A hosted
@@ -39,21 +41,29 @@ export const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
 // Kept in memory: these live for at most 10 minutes, so losing them on a
 // redeploy just means restarting an in-progress OAuth flow — not real data.
-const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; ownerKey?: string; userTokenId?: string; serviceUserId?: string }>();
+type OAuthStateData = {
+  createdAt: number;
+  isAdmin: boolean;
+  ownerKey?: string;
+  userTokenId?: string;
+  serviceUserId?: string;
+  codeVerifier?: string;
+};
+const oauthStates = new Map<string, OAuthStateData>();
 
-export function createOAuthState(isAdmin: boolean, ownerKey?: string, userTokenId?: string, serviceUserId?: string): string {
+export function createOAuthState(isAdmin: boolean, ownerKey?: string, userTokenId?: string, serviceUserId?: string, codeVerifier?: string): string {
   const state = randomUUID();
-  oauthStates.set(state, { createdAt: Date.now(), isAdmin, ownerKey, userTokenId, serviceUserId });
+  oauthStates.set(state, { createdAt: Date.now(), isAdmin, ownerKey, userTokenId, serviceUserId, codeVerifier });
   return state;
 }
 
-export function consumeOAuthState(state: string): { isAdmin: boolean; ownerKey?: string; userTokenId?: string; serviceUserId?: string } | undefined {
+export function consumeOAuthState(state: string): Omit<OAuthStateData, "createdAt"> | undefined {
   const s = oauthStates.get(state);
   if (!s) return undefined;
   oauthStates.delete(state);
   // expire after 10 min
   if (Date.now() - s.createdAt > 600_000) return undefined;
-  return { isAdmin: s.isAdmin, ownerKey: s.ownerKey, userTokenId: s.userTokenId, serviceUserId: s.serviceUserId };
+  return { isAdmin: s.isAdmin, ownerKey: s.ownerKey, userTokenId: s.userTokenId, serviceUserId: s.serviceUserId, codeVerifier: s.codeVerifier };
 }
 
 // cleanup every 10 min
