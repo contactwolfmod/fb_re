@@ -18,6 +18,19 @@ import * as path from "path";
 // is just needing to log back in once.
 const STATE_BASE = process.env.STATE_DIR ?? path.join(process.cwd(), "dist");
 
+// fca-unofficial frequently rejects/errors with plain objects (e.g.
+// {error: "..."}) rather than Error instances — String(err) on those just
+// prints "[object Object]", hiding the actual cause. Always log through this.
+function describeErr(err: any): string {
+  if (err instanceof Error) return err.stack ?? err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
 export type LoginCredentials =
   | { type: "credentials"; email: string; password: string }
   | { type: "appstate"; appState: any[] };
@@ -125,7 +138,7 @@ export class FacebookBotEngine {
       this.blog("warn", { path: this.statePath }, "Saved state file is in an old/incompatible format — ignoring, fresh login required");
       return null;
     } catch (e) {
-      this.blog("warn", { err: String(e) }, "Could not load saved session state — will need a fresh login");
+      this.blog("warn", { err: describeErr(e) }, "Could not load saved session state — will need a fresh login");
       return null;
     }
   }
@@ -138,7 +151,7 @@ export class FacebookBotEngine {
       fs.writeFileSync(this.statePath, JSON.stringify(state));
       this.blog("info", {}, "Session state saved");
     } catch (e) {
-      this.blog("warn", { err: String(e) }, "Could not save session state");
+      this.blog("warn", { err: describeErr(e) }, "Could not save session state");
     }
   }
 
@@ -209,12 +222,12 @@ export class FacebookBotEngine {
       this.opts.state.messagesHandled++;
       this.blog("info", { threadId }, "Reply sent ✓");
     } catch (err) {
-      this.blog("error", { err: String(err), threadId }, "Reply failed — sending fallback");
+      this.blog("error", { err: describeErr(err), threadId }, "Reply failed — sending fallback");
       try {
         await this.sendFbMessage(threadId, "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.");
         this.blog("info", { threadId }, "Fallback message sent");
       } catch (fbErr) {
-        this.blog("error", { err: String(fbErr), threadId }, "Fallback send also failed");
+        this.blog("error", { err: describeErr(fbErr), threadId }, "Fallback send also failed");
       }
     }
   }
@@ -247,7 +260,7 @@ export class FacebookBotEngine {
 
     this.mqttEmitter = api.listenMqtt((err, message) => {
       if (err) {
-        this.blog("error", { err: String(err) }, "listenMqtt error — session likely invalidated");
+        this.blog("error", { err: describeErr(err) }, "listenMqtt error — session likely invalidated");
         this.opts.state.status = "error";
         this.opts.state.error = "Mất kết nối phiên Messenger. Vui lòng khởi động lại bot.";
         return;
@@ -255,7 +268,7 @@ export class FacebookBotEngine {
       if (!message) return;
       if (message.type === "message" || message.type === "message_reply") {
         this.handleMessage(message.threadID, !!message.isGroup, message.body ?? "", message.senderID, message.messageID)
-          .catch((e) => this.blog("error", { err: String(e) }, "handleMessage threw"));
+          .catch((e) => this.blog("error", { err: describeErr(e) }, "handleMessage threw"));
       }
     });
 
