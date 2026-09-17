@@ -112,7 +112,7 @@ function css() {
     .thread-add-form input{flex:1}
     .thread-list{display:flex;flex-direction:column;gap:8px}
     .thread-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
-    .thread-id{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem;color:#818cf8}
+    .thread-id{display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem;color:#818cf8}
     .icon-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text-dim);border-radius:7px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;flex:none}
     .icon-btn:hover{color:#fca5a5;border-color:rgba(239,68,68,.35)}
     .empty-hint{font-size:.78rem;color:var(--text-mute);padding:6px 2px}
@@ -160,7 +160,7 @@ function replyModeCard(id: string, user: ServiceUser) {
     ? `<p class="empty-hint">Chưa có hội thoại nào — thêm Thread ID ở trên.</p>`
     : `<div class="thread-list">${user.threadIds.map(tid => `
         <div class="thread-item">
-          <span class="thread-id">${esc(tid)}</span>
+          <span class="thread-id">${icon("facebook", 13)} ${esc(tid)}</span>
           <form method="post" action="/u/${id}/threads/remove" style="margin:0">
             <input type="hidden" name="threadId" value="${esc(tid)}">
             <button type="submit" class="icon-btn" title="Xóa">${icon("trash", 14)}</button>
@@ -310,7 +310,10 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
         <div class="avatar">${initialOf(user.name)}</div>
         <div>
           <div class="uh-name">${esc(user.name)}</div>
-          <div class="uh-sub"><span class="badge ${user.replyMode === "all" ? "badge-ok" : "badge-used"}">${user.replyMode === "all" ? "Tất cả hội thoại" : `${user.threadIds.length} hội thoại cụ thể`}</span></div>
+          <div class="uh-sub" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="badge ${user.replyMode === "all" ? "badge-ok" : "badge-used"}">${user.replyMode === "all" ? "Tất cả hội thoại" : `${user.threadIds.length} hội thoại cụ thể`}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--text-mute)">${icon("facebook", 12)} ${esc(user.id)}</span>
+          </div>
         </div>
       </div>
       <form method="post" action="/u/${id}/logout"><button class="btn btn-ghost">${icon("logout")} Đăng xuất</button></form>

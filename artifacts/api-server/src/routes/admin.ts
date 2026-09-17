@@ -9,6 +9,7 @@ import {
   listAiAccounts,
   deleteAiAccount,
   createServiceUser,
+  addServiceUserThread,
   listServiceUsers,
   deleteServiceUser,
   setServiceUserActive,
@@ -16,6 +17,7 @@ import {
 } from "../lib/adminAuth";
 import { botState } from "../bot/state";
 import { icon } from "../lib/icons";
+import { resolveFacebookId } from "../lib/facebookId";
 
 const router: IRouter = Router();
 
@@ -332,7 +334,7 @@ router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
           ? `<div class="mono" style="font-size:.68rem;color:#64748b;margin-top:4px;max-width:170px;word-break:break-all">${u.threadIds.join(", ")}</div>`
           : "";
         return `<tr>
-          <td><div class="name-cell"><div class="avatar">${initialOf(u.name)}</div><div><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.7rem;color:#818cf8;margin-top:2px">ID: ${u.id}</div></div></div></td>
+          <td><div class="name-cell"><div class="avatar">${initialOf(u.name)}</div><div><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.7rem;color:#818cf8;margin-top:2px;display:inline-flex;align-items:center;gap:4px">${icon("facebook", 11)} ${u.id}</div></div></div></td>
           <td>${modeBadge}${threadPreview}</td>
           <td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td>
           <td>${u.active ? `<span class="badge badge-ok">Hoạt động</span>` : `<span class="badge badge-exp">Đã khóa</span>`}</td>
@@ -400,13 +402,17 @@ router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
           <div style="padding:0 28px 28px">
             <section id="customers" class="section">
               <div class="section-head">
-                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Mỗi khách hàng có URL và mật khẩu riêng; tự chọn hội thoại cần trả lời và kết nối Gemini trên trang của họ.</div></div></div>
+                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Dán link Facebook của người thuê — hệ thống tự tra ID và tạo link truy cập riêng cho họ.</div></div></div>
                 <span class="badge badge-ok">${activeUsers} đang hoạt động</span>
               </div>
               <div class="panel" style="margin-bottom:16px">
                 <form method="POST" action="/admin/users/create" class="form-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
                   <div><label>Tên khách hàng</label><input name="name" required maxlength="80" placeholder="Công ty ABC"></div>
-                  <div><label>ID link con</label><input name="id" required pattern="[a-z0-9-]{3,48}" placeholder="cong-ty-abc"></div>
+                  <div>
+                    <label>${icon("facebook", 12)} Link Facebook người thuê</label>
+                    <input name="facebookLink" required placeholder="https://facebook.com/ten-nguoi-dung">
+                    <div class="hint">Hoặc dán thẳng ID Facebook (dạng số) nếu tra cứu tự động lỗi</div>
+                  </div>
                   <div><label>Mật khẩu</label><input name="password" type="password" required minlength="8" placeholder="Tối thiểu 8 ký tự"></div>
                   <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tạo khách hàng và link con</button></div>
                 </form>
@@ -462,11 +468,20 @@ router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
 });
 
 router.post("/admin/users/create", requireAdmin, async (req: Request, res: Response) => {
-  const { id, name, password } = req.body as { id?: string; name?: string; password?: string };
-  const safeId = id?.trim().toLowerCase() ?? "";
-  if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin user không hợp lệ. ID dùng a-z, 0-9, -, dài 3-48; mật khẩu tối thiểu 8 ký tự."); return; }
-  try { await createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password }); res.redirect("/admin"); }
-  catch (err: any) { res.status(409).send(err?.message ?? "Không tạo được user."); }
+  const { facebookLink, name, password } = req.body as { facebookLink?: string; name?: string; password?: string };
+  if (!name?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin không hợp lệ. Cần tên và mật khẩu tối thiểu 8 ký tự."); return; }
+  if (!facebookLink?.trim()) { res.status(400).send("Vui lòng nhập link Facebook người thuê."); return; }
+
+  const resolved = await resolveFacebookId(facebookLink);
+  if (!resolved.ok || !resolved.id) { res.status(400).send(resolved.error ?? "Không tra cứu được ID Facebook."); return; }
+
+  try {
+    await createServiceUser({ id: resolved.id, name: name.trim().slice(0, 80), password });
+    await addServiceUserThread(resolved.id, resolved.id);
+    res.redirect("/admin");
+  } catch (err: any) {
+    res.status(409).send(err?.message ?? "Không tạo được user.");
+  }
 });
 router.post("/admin/users/toggle", requireAdmin, async (req: Request, res: Response) => { const { id, active } = req.body as { id?: string; active?: string }; if (id) await setServiceUserActive(id, active === "1"); res.redirect("/admin"); });
 router.post("/admin/users/delete", requireAdmin, async (req: Request, res: Response) => { const { id } = req.body as { id?: string }; if (id) await deleteServiceUser(id); res.redirect("/admin"); });
