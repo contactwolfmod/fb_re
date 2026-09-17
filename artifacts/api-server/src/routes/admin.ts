@@ -402,16 +402,15 @@ router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
           <div style="padding:0 28px 28px">
             <section id="customers" class="section">
               <div class="section-head">
-                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Dán link Facebook của người thuê — hệ thống tự tra ID và tạo link truy cập riêng cho họ.</div></div></div>
+                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Dán link Facebook của người thuê — hệ thống tự tra ID, tên hiển thị và tạo link truy cập riêng cho họ.</div></div></div>
                 <span class="badge badge-ok">${activeUsers} đang hoạt động</span>
               </div>
               <div class="panel" style="margin-bottom:16px">
-                <form method="POST" action="/admin/users/create" class="form-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-                  <div><label>Tên khách hàng</label><input name="name" required maxlength="80" placeholder="Công ty ABC"></div>
+                <form method="POST" action="/admin/users/create" class="form-grid" style="grid-template-columns:1fr 1fr">
                   <div>
                     <label>${icon("facebook", 12)} Link Facebook người thuê</label>
                     <input name="facebookLink" required placeholder="https://facebook.com/ten-nguoi-dung">
-                    <div class="hint">Hoặc dán thẳng ID Facebook (dạng số) nếu tra cứu tự động lỗi</div>
+                    <div class="hint">Tên khách hàng lấy tự động từ Facebook. Nếu tra cứu lỗi, dán thẳng ID Facebook (dạng số).</div>
                   </div>
                   <div><label>Mật khẩu</label><input name="password" type="password" required minlength="8" placeholder="Tối thiểu 8 ký tự"></div>
                   <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tạo khách hàng và link con</button></div>
@@ -468,15 +467,20 @@ router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
 });
 
 router.post("/admin/users/create", requireAdmin, async (req: Request, res: Response) => {
-  const { facebookLink, name, password } = req.body as { facebookLink?: string; name?: string; password?: string };
-  if (!name?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin không hợp lệ. Cần tên và mật khẩu tối thiểu 8 ký tự."); return; }
+  const { facebookLink, password } = req.body as { facebookLink?: string; password?: string };
+  if (!password || password.length < 8) { res.status(400).send("Mật khẩu tối thiểu 8 ký tự."); return; }
   if (!facebookLink?.trim()) { res.status(400).send("Vui lòng nhập link Facebook người thuê."); return; }
 
   const resolved = await resolveFacebookId(facebookLink);
   if (!resolved.ok || !resolved.id) { res.status(400).send(resolved.error ?? "Không tra cứu được ID Facebook."); return; }
 
+  // Name is best-effort from the lookup API (it may be Cloudflare-blocked or
+  // the caller pasted a bare numeric ID with no link to pull a name from) —
+  // fall back to a generic name rather than blocking customer creation on it.
+  const name = resolved.name || `Khách hàng ${resolved.id}`;
+
   try {
-    await createServiceUser({ id: resolved.id, name: name.trim().slice(0, 80), password });
+    await createServiceUser({ id: resolved.id, name, password });
     await addServiceUserThread(resolved.id, resolved.id);
     res.redirect("/admin");
   } catch (err: any) {

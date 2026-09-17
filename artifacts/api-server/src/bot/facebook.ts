@@ -341,7 +341,8 @@ async function handleMessage(
   }
 
   try {
-    const reply = await getClaudeReply(threadId, body, botState.systemPrompt);
+    const systemPrompt = owner?.systemPrompt || botState.systemPrompt;
+    const reply = await getClaudeReply(threadId, body, systemPrompt);
     if (!reply || !reply.trim()) {
       blog("error", { threadId }, "AI returned empty reply — skipping send");
       return;

@@ -13,6 +13,7 @@ import {
   setServiceUserReplyMode,
   addServiceUserThread,
   removeServiceUserThread,
+  setServiceUserSystemPrompt,
   type ServiceUser,
 } from "../lib/adminAuth";
 import { getClaudeReply } from "../bot/claude";
@@ -195,6 +196,17 @@ function replyModeCard(id: string, user: ServiceUser) {
   </section>`;
 }
 
+function promptCard(id: string, user: ServiceUser, saved: boolean) {
+  return `<section class="card">
+    <div class="card-head"><div class="card-icon">${icon("edit", 15)}</div><div><div class="card-title">Hướng dẫn AI (system prompt)</div><div class="card-note">Tùy chỉnh tính cách, quy tắc trả lời riêng cho AI của bạn. Để trống để dùng mặc định của hệ thống.</div></div></div>
+    ${saved ? `<div class="alert alert-ok">${icon("check")}<span>Đã lưu hướng dẫn AI.</span></div>` : ""}
+    <form method="post" action="/u/${id}/system-prompt">
+      <textarea name="systemPrompt" rows="5" maxlength="4000" placeholder="Ví dụ: Bạn là nhân viên tư vấn của cửa hàng ABC, luôn trả lời thân thiện, ngắn gọn, ưu tiên giới thiệu sản phẩm đang khuyến mãi...">${esc(user.systemPrompt)}</textarea>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:10px">${icon("check")} Lưu hướng dẫn</button>
+    </form>
+  </section>`;
+}
+
 router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
   const id = (req.params.id as string).toLowerCase();
   const user = await getServiceUser(id);
@@ -320,6 +332,7 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
     </header>
     ${geminiOk}${modelSaved}${modelErr}${threadErr}
     ${replyModeCard(id, user)}
+    ${promptCard(id, user, !!req.query["promptSaved"])}
     ${aiBlock}
     <section class="card">
       <div class="card-head"><div class="card-icon">${icon("message", 15)}</div><div><div class="card-title">Test Chat trực tiếp</div><div class="card-note">Thử ngay để xem AI sẽ trả lời như thế nào.</div></div></div>
@@ -374,6 +387,12 @@ router.post("/u/:id/reply-mode", async (req: Request, res: Response) => {
   if (u) await setServiceUserReplyMode(id, req.body.mode === "all" ? "all" : "specific");
   res.redirect(`/u/${id}`);
 });
+router.post("/u/:id/system-prompt", async (req: Request, res: Response) => {
+  const id = (req.params.id as string).toLowerCase();
+  const u = await current(req, id);
+  if (u) await setServiceUserSystemPrompt(id, String(req.body.systemPrompt ?? ""));
+  res.redirect(`/u/${id}?promptSaved=1`);
+});
 router.post("/u/:id/threads/add", async (req: Request, res: Response) => {
   const id = (req.params.id as string).toLowerCase();
   const u = await current(req, id);
@@ -387,7 +406,7 @@ router.post("/u/:id/threads/remove", async (req: Request, res: Response) => {
   if (u) await removeServiceUserThread(id, String(req.body.threadId ?? ""));
   res.redirect(`/u/${id}`);
 });
-router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,botState.systemPrompt)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
+router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,u.systemPrompt||botState.systemPrompt)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
 
 // ── Custom AI config (manual API key) ─────────────────────────────────────────
 router.post("/u/:id/ai-config", async (req: Request, res: Response) => {

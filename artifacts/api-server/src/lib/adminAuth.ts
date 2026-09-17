@@ -229,6 +229,7 @@ export interface ServiceUser {
   passwordHash: string;
   replyMode: ReplyMode;
   threadIds: string[];
+  systemPrompt: string;
   active: boolean;
   createdAt: number;
 }
@@ -261,6 +262,7 @@ function toServiceUser(row: typeof serviceUsersTable.$inferSelect): ServiceUser 
     passwordHash: row.passwordHash,
     replyMode: row.replyMode === "all" ? "all" : "specific",
     threadIds: row.threadIds ?? [],
+    systemPrompt: row.systemPrompt ?? "",
     active: row.active,
     createdAt: row.createdAt,
   };
@@ -271,7 +273,8 @@ export async function createServiceUser(opts: { id: string; name: string; passwo
   if (await getServiceUser(id)) throw new Error("ID nguoi dung da ton tai.");
   const row = {
     id, name: opts.name, passwordHash: hashPassword(opts.password),
-    replyMode: "specific" as const, threadIds: [] as string[], active: true, createdAt: Date.now(),
+    replyMode: "specific" as const, threadIds: [] as string[], systemPrompt: "",
+    active: true, createdAt: Date.now(),
   };
   await db.insert(serviceUsersTable).values(row);
   return row;
@@ -289,6 +292,15 @@ export async function listServiceUsers(): Promise<ServiceUser[]> {
 
 export async function setServiceUserReplyMode(id: string, mode: ReplyMode): Promise<boolean> {
   const result = await db.update(serviceUsersTable).set({ replyMode: mode })
+    .where(eq(serviceUsersTable.id, id.toLowerCase()))
+    .returning({ id: serviceUsersTable.id });
+  return result.length > 0;
+}
+
+const MAX_SYSTEM_PROMPT_LENGTH = 4000;
+
+export async function setServiceUserSystemPrompt(id: string, prompt: string): Promise<boolean> {
+  const result = await db.update(serviceUsersTable).set({ systemPrompt: prompt.trim().slice(0, MAX_SYSTEM_PROMPT_LENGTH) })
     .where(eq(serviceUsersTable.id, id.toLowerCase()))
     .returning({ id: serviceUsersTable.id });
   return result.length > 0;

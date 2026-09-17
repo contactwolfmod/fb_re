@@ -11,6 +11,9 @@ export const serviceUsersTable = pgTable("service_users", {
   passwordHash: text("password_hash").notNull(),
   replyMode: text("reply_mode").notNull().default("specific"),
   threadIds: jsonb("thread_ids").notNull().default(sql`'[]'::jsonb`).$type<string[]>(),
+  // Per-customer AI system prompt, self-configured from /u/:id. Empty string
+  // means "use the bot's global default prompt" (botState.systemPrompt).
+  systemPrompt: text("system_prompt").notNull().default(""),
   active: boolean("active").notNull().default(true),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
