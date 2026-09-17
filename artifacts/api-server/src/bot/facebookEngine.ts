@@ -307,6 +307,13 @@ export class FacebookBotEngine {
     return fs.existsSync(this.autostartFlagPath) && fs.existsSync(this.statePath);
   }
 
+  /** Whether a saved cookie session exists on disk, regardless of the
+   *  autostart flag — used to let the "connect" form skip re-pasting
+   *  cookies when a previous login already saved a reusable session. */
+  hasSavedSession(): boolean {
+    return fs.existsSync(this.statePath);
+  }
+
   // No interactive 2FA continuation exists in ws3-fca — see the class-level
   // note on TwoFactorRequired. Kept only so callers don't need changes.
   async submit2FACode(_code: string): Promise<void> {

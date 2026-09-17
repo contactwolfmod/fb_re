@@ -77,6 +77,13 @@ export function getTenantBotState(ownerId: string): EngineState | undefined {
   return sessions.get(ownerId)?.state;
 }
 
+/** Whether this owner has a previously saved Facebook session on disk, so
+ *  the "connect" form can offer to reuse it instead of requiring the
+ *  customer to paste their cookie again every time. */
+export function hasTenantSavedSession(ownerId: string): boolean {
+  return getOrCreateSession(ownerId).engine.hasSavedSession();
+}
+
 /** Restart any tenant bots that were running before a redeploy (mirrors the
  *  admin bot's canAutoRestart()/startBot() pattern in index.ts, scanning the
  *  same STATE_DIR volume for per-tenant autostart flags instead of the one

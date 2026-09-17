@@ -19,7 +19,7 @@ import {
 import { getClaudeReply } from "../bot/claude";
 import { botState } from "../bot/state";
 import { icon } from "../lib/icons";
-import { startTenantBot, stopTenantBot, submitTenantBot2FA, getTenantBotState } from "../bot/tenantBots";
+import { startTenantBot, stopTenantBot, submitTenantBot2FA, getTenantBotState, hasTenantSavedSession } from "../bot/tenantBots";
 import { TwoFactorRequired, type LoginCredentials } from "../bot/facebookEngine";
 import { parseAppState, validateRequiredCookies } from "../lib/facebookCookies";
 
@@ -311,8 +311,9 @@ function fbBotCard(id: string, state: { status: string; error: string | null; me
           4. Dán toàn bộ nội dung vừa copy vào ô bên dưới rồi bấm "Kết nối Facebook".
         </div>
       </details>
+      ${hasTenantSavedSession(id) ? `<div class="alert" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;margin-bottom:14px">${icon("check")}<span>Đã có phiên đăng nhập được lưu — để trống ô cookie bên dưới rồi bấm "Kết nối Facebook" để dùng lại, không cần dán cookie mới. Chỉ dán lại khi báo lỗi.</span></div>` : ""}
       <form method="post" action="/u/${id}/fb-bot/start">
-        <label>Cookie Facebook (khuyến nghị)</label>
+        <label>Cookie Facebook${hasTenantSavedSession(id) ? " (để trống để dùng lại phiên đã lưu)" : " (khuyến nghị)"}</label>
         <textarea name="cookies" rows="3" placeholder="Dán JSON từ Cookie-Editor, hoặc chuỗi c_user=...; xs=...; datr=..." style="margin-bottom:6px"></textarea>
         <div style="font-size:.72rem;color:var(--text-mute);margin-bottom:12px">Hoặc đăng nhập bằng email/mật khẩu bên dưới (có thể cần xác minh 2FA)</div>
         <div class="mode-grid">
@@ -601,8 +602,12 @@ router.post("/u/:id/fb-bot/start", async (req: Request, res: Response) => {
     credentials = { type: "appstate", appState: parsed };
   } else if (email?.trim() && password?.trim()) {
     credentials = { type: "credentials", email: email.trim(), password };
+  } else if (hasTenantSavedSession(id)) {
+    // Cookie box left blank on purpose — reuse the previously saved session
+    // instead of asking the customer to paste their cookie again.
+    credentials = { type: "appstate", appState: [] };
   } else {
-    res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent("Vui lòng dán cookie Facebook hoặc nhập email/mật khẩu.")}`);
+    res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent("Chưa có phiên nào được lưu trước đó. Vui lòng dán cookie Facebook hoặc nhập email/mật khẩu.")}`);
     return;
   }
 
