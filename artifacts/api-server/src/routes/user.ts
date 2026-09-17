@@ -15,16 +15,127 @@ import {
 } from "../lib/adminAuth";
 import { getClaudeReply } from "../bot/claude";
 import { botState } from "../bot/state";
+import { icon } from "../lib/icons";
 
 const router = Router();
 const validId = /^[a-z0-9-]{3,48}$/;
 const validModel = /^[a-zA-Z0-9._:/-]{2,100}$/;
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]!);
+const initialOf = (name: string) => { const t = name.trim(); return t ? t.charAt(0).toUpperCase() : "?"; };
 
-function page(title: string, body: string) {
-  return `<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
-*{box-sizing:border-box}body{margin:0;font:15px system-ui;background:#0b0d14;color:#e2e8f0}.wrap{max-width:860px;margin:auto;padding:28px 18px}.card{background:#121624;border:1px solid #23293e;border-radius:12px;padding:20px;margin-bottom:18px}input,select,textarea{width:100%;padding:11px;border-radius:8px;border:1px solid #333a52;background:#080a10;color:#fff;font-size:14px;margin:6px 0 14px}input[type=radio]{width:auto;margin:4px 0 0}button,a.btn{display:inline-flex;align-items:center;gap:6px;background:#6366f1;color:#fff;border:0;border-radius:8px;padding:10px 16px;text-decoration:none;font-weight:600;cursor:pointer}.btn-google{background:linear-gradient(135deg,#4285f4,#34a853);font-size:15px;padding:12px 20px}.btn-sub{background:#1f2538;border:1px solid #333a52}.muted{color:#94a3b8}.alert{padding:12px 14px;border-radius:8px;margin-bottom:16px}.alert-ok{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:#86efac}.alert-err{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#fca5a5}.row{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.messages{min-height:220px;max-height:50vh;overflow-y:auto;margin:14px 0;padding:10px;background:#080a10;border-radius:8px;border:1px solid #1f2538}.msg{padding:10px 12px;margin:8px 0;border-radius:8px;background:#181d2e;white-space:pre-wrap}.me{background:#312e81}.bot{background:#1e2438}.mode-option{display:flex;gap:10px;align-items:flex-start;cursor:pointer;padding:10px 0}.thread-item{background:#080a10;border:1px solid #1f2538;border-radius:8px;padding:8px 12px;margin-bottom:8px}
-</style><body><main class="wrap">${body}</main></body></html>`;
+function css() {
+  return `
+    :root{
+      --bg:#0b0b18;--accent:#e94560;--accent-dark:#c23152;--accent-soft:rgba(233,69,96,.13);
+      --surface:rgba(255,255,255,.03);--surface-hover:rgba(255,255,255,.055);
+      --border:rgba(255,255,255,.08);--border-soft:rgba(255,255,255,.06);
+      --card:rgba(18,18,42,.72);
+      --text:#f8fafc;--text-dim:#94a3b8;--text-mute:#64748b;
+      --success:#4ade80;--success-soft:rgba(52,211,153,.1);
+      --danger:#f87171;--danger-soft:rgba(233,69,96,.1);
+      --radius-lg:18px;--radius-md:13px;--radius-sm:9px;
+      --font:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;background-image:radial-gradient(circle at 8% 0%,var(--accent-soft),transparent 30%),radial-gradient(circle at 92% 8%,rgba(56,189,248,.09),transparent 26%);background-attachment:fixed}
+    a{color:inherit}
+    .page-wrap{max-width:720px;margin:0 auto;padding:40px 18px 70px}
+
+    /* login */
+    body.login-body{display:flex;align-items:center;justify-content:center;padding:24px}
+    .login-card{background:var(--card);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(233,69,96,.16);border-radius:var(--radius-lg);padding:36px 34px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+    .login-mark{width:50px;height:50px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:grid;place-items:center;color:#fff;box-shadow:0 0 26px rgba(233,69,96,.4);margin-bottom:16px}
+    .login-card h1{font-size:1.25rem;font-weight:800;margin:0 0 .3rem}
+    .login-card .sub{color:var(--text-dim);font-size:.85rem;margin-bottom:1.4rem}
+
+    /* header */
+    .user-header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+    .user-id{display:flex;align-items:center;gap:13px}
+    .avatar{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(233,69,96,.4),rgba(194,49,82,.4));display:grid;place-items:center;font-weight:800;font-size:1.05rem;color:#fca5b5;flex:none;border:1px solid rgba(233,69,96,.28)}
+    .uh-name{font-size:1.15rem;font-weight:800;color:var(--text)}
+    .uh-sub{margin-top:3px}
+
+    /* shared primitives */
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:.2rem .6rem .2rem .5rem;border-radius:99px;font-size:.7rem;font-weight:700}
+    .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+    .badge-ok{background:var(--success-soft);color:#4ade80}
+    .badge-used{background:rgba(255,255,255,.05);color:#94a3b8}
+    .badge-exp{background:var(--danger-soft);color:#f87171}
+
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.6rem 1.1rem;border-radius:9px;font-weight:650;font-size:.85rem;cursor:pointer;border:none;transition:all .15s;font-family:inherit;white-space:nowrap}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;box-shadow:0 4px 18px rgba(233,69,96,.3)}
+    .btn-primary:hover{filter:brightness(1.08)}
+    .btn-google{background:#fff;color:#1f1f1f;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+    .btn-google:hover{filter:brightness(.96)}
+    .btn-ghost{background:var(--surface);color:var(--text-dim);border:1px solid var(--border)}
+    .btn-ghost:hover{color:var(--text);border-color:rgba(233,69,96,.35)}
+    .btn-danger{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.25)}
+    .btn-danger:hover{background:rgba(239,68,68,.85);color:#fff}
+    .btn-sm{padding:.42rem .8rem;font-size:.76rem;border-radius:8px}
+    .btn:disabled{opacity:.6;cursor:default}
+    .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+    label{display:block;font-size:.78rem;color:var(--text-dim);margin-bottom:.35rem;font-weight:600}
+    input,select,textarea{width:100%;padding:.62rem .8rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.86rem;outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,69,96,.15)}
+    input::placeholder,textarea::placeholder{color:var(--text-mute)}
+
+    .alert{display:flex;align-items:center;gap:.6rem;border-radius:10px;padding:.65rem 1rem;margin-bottom:.8rem;font-size:.82rem}
+    .alert svg{flex:none}
+    .alert-err{background:var(--danger-soft);border:1px solid rgba(233,69,96,.25);color:#fca5a5}
+    .alert-ok{background:var(--success-soft);border:1px solid rgba(52,211,153,.22);color:#86efac}
+
+    .card{background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:var(--radius-lg);box-shadow:0 16px 44px rgba(0,0,0,.35);padding:22px;margin-bottom:18px}
+    .card-head{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+    .card-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+    .card-title{font-size:.98rem;font-weight:750;color:var(--text)}
+    .card-note{font-size:.76rem;color:var(--text-mute);margin-top:1px}
+
+    /* reply-mode selector */
+    .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:4px}
+    .mode-card{position:relative;display:block;border:1px solid var(--border);border-radius:var(--radius-md);padding:15px;cursor:pointer;background:var(--surface);transition:border-color .15s,background .15s}
+    .mode-card:hover{border-color:rgba(233,69,96,.3)}
+    .mode-card input{position:absolute;opacity:0;pointer-events:none}
+    .mode-card.active{border-color:var(--accent);background:var(--accent-soft)}
+    .mode-icon{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--text-dim);display:grid;place-items:center;margin-bottom:10px}
+    .mode-card.active .mode-icon{background:var(--accent);color:#fff}
+    .mode-title{font-size:.86rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
+    .mode-check{color:var(--accent);display:none}
+    .mode-card.active .mode-check{display:inline-flex}
+    .mode-desc{font-size:.72rem;color:var(--text-mute);margin-top:4px;line-height:1.4}
+
+    .sep{height:1px;background:var(--border-soft);margin:16px 0}
+    .thread-add-form{display:flex;gap:8px;margin-bottom:12px}
+    .thread-add-form input{flex:1}
+    .thread-list{display:flex;flex-direction:column;gap:8px}
+    .thread-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
+    .thread-id{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem;color:#818cf8}
+    .icon-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text-dim);border-radius:7px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;flex:none}
+    .icon-btn:hover{color:#fca5a5;border-color:rgba(239,68,68,.35)}
+    .empty-hint{font-size:.78rem;color:var(--text-mute);padding:6px 2px}
+
+    .gemini-connected-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+    .gemini-status{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:650;color:#4ade80}
+    .field-hint{font-size:.72rem;color:var(--text-mute);margin:-4px 0 12px}
+
+    .messages{min-height:200px;max-height:46vh;overflow-y:auto;margin-bottom:12px;padding:10px;background:rgba(0,0,0,.18);border-radius:10px;border:1px solid var(--border-soft);display:flex;flex-direction:column;gap:9px}
+    .msg{padding:9px 13px;border-radius:12px;white-space:pre-wrap;font-size:.86rem;line-height:1.45;max-width:82%}
+    .msg.bot{background:rgba(255,255,255,.05);color:#e2e8f0;align-self:flex-start;border-bottom-left-radius:3px}
+    .msg.me{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+    .chat-form{display:flex;gap:8px;align-items:flex-end}
+    .chat-form textarea{resize:vertical;min-height:44px}
+
+    @media(max-width:520px){
+      .mode-grid{grid-template-columns:1fr}
+      .card{padding:16px}
+      .page-wrap{padding:22px 14px 50px}
+    }
+  `;
+}
+
+function page(title: string, body: string, opts: { loginPage?: boolean } = {}) {
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${css()}</style></head><body class="${opts.loginPage ? "login-body" : ""}"><main class="${opts.loginPage ? "" : "page-wrap"}">${body}</main></body></html>`;
 }
 
 async function current(req: Request, id: string) {
@@ -34,39 +145,42 @@ async function current(req: Request, id: string) {
 
 function replyModeCard(id: string, user: ServiceUser) {
   const threadList = user.threadIds.length === 0
-    ? `<p class="muted" style="font-size:13px;margin-top:4px">Chưa có hội thoại nào — thêm Thread ID ở trên.</p>`
-    : user.threadIds.map(tid => `
-      <div class="row thread-item">
-        <span style="font-family:monospace;font-size:13px;color:#818cf8">${esc(tid)}</span>
-        <form method="post" action="/u/${id}/threads/remove" style="margin:0">
-          <input type="hidden" name="threadId" value="${esc(tid)}">
-          <button type="submit" class="btn-sub" style="padding:6px 12px;font-size:12px;margin:0">Xóa</button>
-        </form>
-      </div>`).join("");
+    ? `<p class="empty-hint">Chưa có hội thoại nào — thêm Thread ID ở trên.</p>`
+    : `<div class="thread-list">${user.threadIds.map(tid => `
+        <div class="thread-item">
+          <span class="thread-id">${esc(tid)}</span>
+          <form method="post" action="/u/${id}/threads/remove" style="margin:0">
+            <input type="hidden" name="threadId" value="${esc(tid)}">
+            <button type="submit" class="icon-btn" title="Xóa">${icon("trash", 14)}</button>
+          </form>
+        </div>`).join("")}</div>`;
 
-  return `<div class="card">
-    <h3 style="margin-top:0">⚙️ Cấu hình trả lời tự động</h3>
-    <p class="muted" style="margin-bottom:4px">Chọn cách bot tự động trả lời tin nhắn Messenger cho tài khoản của bạn.</p>
-    <form method="post" action="/u/${id}/reply-mode" style="margin:10px 0 0">
-      <label class="mode-option">
+  return `<section class="card">
+    <div class="card-head"><div class="card-icon">${icon("sliders", 15)}</div><div><div class="card-title">Cấu hình trả lời tự động</div><div class="card-note">Chọn cách bot tự động trả lời tin nhắn Messenger cho tài khoản của bạn.</div></div></div>
+    <form method="post" action="/u/${id}/reply-mode" class="mode-grid">
+      <label class="mode-card ${user.replyMode === "all" ? "active" : ""}">
         <input type="radio" name="mode" value="all" ${user.replyMode === "all" ? "checked" : ""} onchange="this.form.requestSubmit()">
-        <span><strong>Trả lời tất cả hội thoại</strong><br><span class="muted" style="font-size:13px">Bot sẽ tự động trả lời mọi tin nhắn Messenger gửi đến.</span></span>
+        <div class="mode-icon">${icon("bolt", 16)}</div>
+        <div class="mode-title">Trả lời tất cả ${icon("check", 13)}</div>
+        <div class="mode-desc">Tự động trả lời mọi hội thoại Messenger gửi đến.</div>
       </label>
-      <label class="mode-option">
+      <label class="mode-card ${user.replyMode === "specific" ? "active" : ""}">
         <input type="radio" name="mode" value="specific" ${user.replyMode === "specific" ? "checked" : ""} onchange="this.form.requestSubmit()">
-        <span><strong>Chỉ trả lời hội thoại cụ thể</strong><br><span class="muted" style="font-size:13px">Chỉ tự động trả lời những cuộc trò chuyện bạn thêm bên dưới.</span></span>
+        <div class="mode-icon">${icon("target", 16)}</div>
+        <div class="mode-title">Hội thoại cụ thể ${icon("check", 13)}</div>
+        <div class="mode-desc">Chỉ trả lời những cuộc trò chuyện bạn thêm bên dưới.</div>
       </label>
     </form>
     ${user.replyMode === "specific" ? `
-      <div style="height:1px;background:#23293e;margin:14px 0"></div>
-      <label style="font-size:13px;font-weight:600">Danh sách hội thoại (Thread ID)</label>
-      <form method="post" action="/u/${id}/threads/add" style="display:flex;gap:8px;align-items:flex-start">
-        <input name="threadId" placeholder="Ví dụ: 1234567890" pattern="\\d{5,32}" required style="margin:0" title="Lấy từ URL facebook.com/messages/t/[ID]">
-        <button type="submit" style="white-space:nowrap;margin:0">+ Thêm</button>
+      <div class="sep"></div>
+      <label>Danh sách hội thoại (Thread ID)</label>
+      <form method="post" action="/u/${id}/threads/add" class="thread-add-form">
+        <input name="threadId" placeholder="Ví dụ: 1234567890" pattern="\\d{5,32}" required title="Lấy từ URL facebook.com/messages/t/[ID]">
+        <button type="submit" class="btn btn-primary btn-sm">${icon("plus", 14)} Thêm</button>
       </form>
       ${threadList}
     ` : ""}
-  </div>`;
+  </section>`;
 }
 
 router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
@@ -75,25 +189,28 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
   if (!validId.test(id) || !user) { res.status(404).send("Không tìm thấy trang."); return; }
 
   if (!(await current(req, id))) {
-    const err = req.query["err"] ? `<div class="alert alert-err">Mật khẩu không đúng.</div>` : "";
-    res.send(page("Đăng nhập", `<div class="card" style="max-width:420px;margin:60px auto">
-      <h2 style="margin-top:0">${esc(user.name)}</h2>
-      <p class="muted">Đăng nhập để quản lý và chọn model Gemini của bạn.</p>
-      ${err}
-      <form method="post" action="/u/${id}/login">
-        <label style="font-size:13px;font-weight:600">Mật khẩu</label>
-        <input type="password" name="password" minlength="8" required autofocus placeholder="Nhập mật khẩu...">
-        <button style="width:100%">Đăng nhập &rarr;</button>
-      </form>
-    </div>`));
+    const err = req.query["err"] ? `<div class="alert alert-err">${icon("alert")}<span>Mật khẩu không đúng.</span></div>` : "";
+    res.send(page("Đăng nhập", `
+      <div class="login-card">
+        <div class="login-mark">${icon("shield", 22)}</div>
+        <h1>${esc(user.name)}</h1>
+        <p class="sub">Đăng nhập để quản lý và chọn model Gemini của bạn.</p>
+        ${err}
+        <form method="post" action="/u/${id}/login">
+          <label>Mật khẩu</label>
+          <input type="password" name="password" minlength="8" required autofocus placeholder="Nhập mật khẩu..." style="margin-bottom:14px">
+          <button style="width:100%" class="btn btn-primary">${icon("unlock")} Đăng nhập</button>
+        </form>
+      </div>
+    `, { loginPage: true }));
     return;
   }
 
   const c = await getUserAiConfig(user.id);
-  const geminiOk = req.query["geminiOk"] ? `<div class="alert alert-ok">&#x2705; Đã kết nối tài khoản Google thành công! Hãy chọn model Gemini bên dưới.</div>` : "";
-  const modelSaved = req.query["modelSaved"] ? `<div class="alert alert-ok">&#x2705; Đã cập nhật model Gemini thành công! Bot Facebook sẽ trả lời bằng model này.</div>` : "";
-  const modelErr = req.query["modelErr"] ? `<div class="alert alert-err">&#x26A0; Không lưu được model. Vui lòng kiểm tra lại.</div>` : "";
-  const threadErr = req.query["threadErr"] ? `<div class="alert alert-err">&#x26A0; ${esc(decodeURIComponent(String(req.query["threadErr"])))}</div>` : "";
+  const geminiOk = req.query["geminiOk"] ? `<div class="alert alert-ok">${icon("check")}<span>Đã kết nối tài khoản Google thành công! Hãy chọn model Gemini bên dưới.</span></div>` : "";
+  const modelSaved = req.query["modelSaved"] ? `<div class="alert alert-ok">${icon("check")}<span>Đã cập nhật model Gemini thành công! Bot Facebook sẽ trả lời bằng model này.</span></div>` : "";
+  const modelErr = req.query["modelErr"] ? `<div class="alert alert-err">${icon("alert")}<span>Không lưu được model. Vui lòng kiểm tra lại.</span></div>` : "";
+  const threadErr = req.query["threadErr"] ? `<div class="alert alert-err">${icon("alert")}<span>${esc(decodeURIComponent(String(req.query["threadErr"])))}</span></div>` : "";
 
   let aiBlock = "";
   if (c && c.accessToken) {
@@ -101,74 +218,68 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
     if (!models.includes(c.model)) models.unshift(c.model);
     const opts = models.map(m => `<option value="${esc(m)}" ${m === c.model ? "selected" : ""}>${esc(m)}${m === c.model ? " (đang dùng)" : ""}</option>`).join("");
 
-    aiBlock = `<div class="card">
-      <div class="row" style="margin-bottom:12px">
-        <div>
-          <h3 style="margin:0 0 4px">&#x2728; Model Gemini từ tài khoản Google của bạn</h3>
-          <span style="color:#4ade80;font-size:13px;font-weight:600">&#x25CF; Đã kết nối Google account</span>
-        </div>
-        <a class="btn btn-sub" href="/u/${id}/gemini">&#x21BB; Kết nối Google khác</a>
+    aiBlock = `<section class="card">
+      <div class="gemini-connected-head">
+        <div class="card-head" style="margin-bottom:0"><div class="card-icon">${icon("sparkles", 15)}</div><div><div class="card-title">Model Gemini từ tài khoản Google của bạn</div><div class="gemini-status">${icon("check", 13)} Đã kết nối Google account</div></div></div>
+        <a class="btn btn-ghost btn-sm" href="/u/${id}/gemini">${icon("rotate", 13)} Kết nối Google khác</a>
       </div>
-      <p class="muted" style="margin-bottom:16px">Danh sách model có thể dùng trên tài khoản Google của bạn. Chọn model để kết nối:</p>
+      <p class="card-note" style="margin-bottom:14px">Danh sách model có thể dùng trên tài khoản Google của bạn. Chọn model để kết nối:</p>
       <form method="post" action="/u/${id}/model">
-        <label style="font-size:13px;font-weight:600">Chọn Model Gemini:</label>
-        <select name="model" required>${opts}</select>
-        <div style="margin-top:-6px;margin-bottom:14px">
-          <label style="font-size:12px;color:#94a3b8">Hoặc tự gõ model khác (tùy chọn):</label>
-          <input name="customModel" placeholder="Để trống để dùng model ở trên..." style="margin-top:4px">
-        </div>
-        <button type="submit">&#x1F4BE; Lưu Model</button>
+        <label>Chọn Model Gemini</label>
+        <select name="model" required style="margin-bottom:12px">${opts}</select>
+        <label style="font-size:.72rem">Hoặc tự gõ model khác (tùy chọn)</label>
+        <input name="customModel" placeholder="Để trống để dùng model ở trên..." style="margin-bottom:14px">
+        <button type="submit" class="btn btn-primary" style="width:100%">${icon("check")} Lưu Model</button>
       </form>
-    </div>`;
+    </section>`;
   } else {
-    aiBlock = `<div class="card" style="border-color:#3b82f6;background:linear-gradient(180deg,#121a30,#121624)">
-      <h3 style="margin:0 0 8px">&#x1F517; Kết nối tài khoản Google để dùng Gemini</h3>
-      <p class="muted" style="line-height:1.6;margin-bottom:18px">
-        Bấm nút bên dưới để đăng nhập Google. Hệ thống sẽ lấy danh sách các model Gemini có trên tài khoản Google của bạn để bạn chọn model kết nối vào bot!
-      </p>
-      <a class="btn btn-google" href="/u/${id}/gemini">&#x1F511; Đăng nhập Google &amp; Kết nối Gemini &rarr;</a>
-    </div>`;
+    aiBlock = `<section class="card" style="border-color:rgba(56,189,248,.3)">
+      <div class="card-head"><div class="card-icon" style="background:rgba(56,189,248,.14);color:#38bdf8">${icon("link", 15)}</div><div><div class="card-title">Kết nối tài khoản Google để dùng Gemini</div><div class="card-note">Hệ thống sẽ lấy danh sách model Gemini trên tài khoản Google của bạn để bạn chọn.</div></div></div>
+      <a class="btn btn-google" href="/u/${id}/gemini" style="width:100%">${icon("key", 15)} Đăng nhập Google &amp; Kết nối Gemini</a>
+    </section>`;
   }
 
   res.send(page(user.name, `
-    <div class="row" style="margin-bottom:20px">
-      <div>
-        <h2 style="margin:0 0 4px">${esc(user.name)}</h2>
-        <p class="muted" style="margin:0">Chế độ trả lời: <strong style="color:#818cf8">${user.replyMode === "all" ? "Tất cả hội thoại" : `${user.threadIds.length} hội thoại cụ thể`}</strong></p>
+    <header class="user-header">
+      <div class="user-id">
+        <div class="avatar">${initialOf(user.name)}</div>
+        <div>
+          <div class="uh-name">${esc(user.name)}</div>
+          <div class="uh-sub"><span class="badge ${user.replyMode === "all" ? "badge-ok" : "badge-used"}">${user.replyMode === "all" ? "Tất cả hội thoại" : `${user.threadIds.length} hội thoại cụ thể`}</span></div>
+        </div>
       </div>
-      <form method="post" action="/u/${id}/logout" style="margin:0"><button class="btn btn-sub">Đăng xuất</button></form>
-    </div>
+      <form method="post" action="/u/${id}/logout"><button class="btn btn-ghost">${icon("logout")} Đăng xuất</button></form>
+    </header>
     ${geminiOk}${modelSaved}${modelErr}${threadErr}
     ${replyModeCard(id, user)}
     ${aiBlock}
-    <div class="card">
-      <h3 style="margin-top:0">&#x1F4AC; Test Chat trực tiếp</h3>
-      <div id="messages" class="messages"><div class="msg bot">&#x1F916; Sẵn sàng test với model Gemini của bạn.</div></div>
-      <form id="chat" style="margin:0">
-        <textarea id="prompt" required placeholder="Nhập tin nhắn test..." rows="2" style="resize:vertical"></textarea>
-        <button id="sbtn" type="submit">Gửi tin nhắn</button>
+    <section class="card">
+      <div class="card-head"><div class="card-icon">${icon("message", 15)}</div><div><div class="card-title">Test Chat trực tiếp</div><div class="card-note">Thử ngay để xem AI sẽ trả lời như thế nào.</div></div></div>
+      <div id="messages" class="messages"><div class="msg bot">🤖 Sẵn sàng test với model Gemini của bạn.</div></div>
+      <form id="chat" class="chat-form">
+        <textarea id="prompt" required placeholder="Nhập tin nhắn test..." rows="1"></textarea>
+        <button id="sbtn" type="submit" class="btn btn-primary icon-btn" style="width:44px;height:44px;border-radius:9px">${icon("send", 16)}</button>
       </form>
-    </div>
+    </section>
     <script>
       const m = document.querySelector("#messages"), f = document.querySelector("#chat"), p = document.querySelector("#prompt"), btn = document.querySelector("#sbtn");
+      const escHtml = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       f.onsubmit = async (e) => {
         e.preventDefault();
         const v = p.value.trim();
         if (!v) return;
-        m.innerHTML += '<div class="msg me">' + v.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) + '</div>';
+        m.innerHTML += '<div class="msg me">' + escHtml(v) + '</div>';
         p.value = '';
         m.scrollTop = m.scrollHeight;
         btn.disabled = true;
-        btn.textContent = 'Đang xử lý...';
         try {
           const res = await fetch('/u/${id}/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt: v }) });
           const d = await res.json();
-          m.innerHTML += '<div class="msg bot">' + (d.reply || d.error || 'Không có phản hồi').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) + '</div>';
+          m.innerHTML += '<div class="msg bot">' + escHtml(d.reply || d.error || 'Không có phản hồi') + '</div>';
         } catch (err) {
-          m.innerHTML += '<div class="msg bot" style="color:#fca5a5">Lỗi: ' + err.message + '</div>';
+          m.innerHTML += '<div class="msg bot" style="color:#fca5a5">Lỗi: ' + escHtml(err.message) + '</div>';
         } finally {
           btn.disabled = false;
-          btn.textContent = 'Gửi tin nhắn';
           m.scrollTop = m.scrollHeight;
         }
       };
@@ -200,7 +311,7 @@ router.post("/u/:id/threads/add", async (req: Request, res: Response) => {
   const u = await current(req, id);
   if (!u) { res.redirect(`/u/${id}`); return; }
   const result = await addServiceUserThread(id, String(req.body.threadId ?? ""));
-  res.redirect(result.ok ? `/u/${id}` : `/u/${id}?threadErr=${encodeURIComponent(result.error ?? "Loi khong xac dinh.")}`);
+  res.redirect(result.ok ? `/u/${id}` : `/u/${id}?threadErr=${encodeURIComponent(result.error ?? "Lỗi không xác định.")}`);
 });
 router.post("/u/:id/threads/remove", async (req: Request, res: Response) => {
   const id = (req.params.id as string).toLowerCase();

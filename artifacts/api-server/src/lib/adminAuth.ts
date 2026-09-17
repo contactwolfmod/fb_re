@@ -284,11 +284,11 @@ export async function setServiceUserReplyMode(id: string, mode: ReplyMode): Prom
 
 export async function addServiceUserThread(id: string, threadId: string): Promise<{ ok: boolean; error?: string }> {
   const user = await getServiceUser(id);
-  if (!user) return { ok: false, error: "Khong tim thay user." };
+  if (!user) return { ok: false, error: "Không tìm thấy user." };
   const clean = threadId.trim();
-  if (!validThreadId.test(clean)) return { ok: false, error: "Thread ID khong hop le (chi gom chu so, 5-32 ky tu)." };
-  if (user.threadIds.includes(clean)) return { ok: false, error: "Thread ID nay da duoc them." };
-  if (user.threadIds.length >= MAX_THREADS_PER_USER) return { ok: false, error: "Da dat gioi han so hoi thoai." };
+  if (!validThreadId.test(clean)) return { ok: false, error: "Thread ID không hợp lệ (chỉ gồm chữ số, 5-32 ký tự)." };
+  if (user.threadIds.includes(clean)) return { ok: false, error: "Thread ID này đã được thêm." };
+  if (user.threadIds.length >= MAX_THREADS_PER_USER) return { ok: false, error: "Đã đạt giới hạn số hội thoại." };
   await db.update(serviceUsersTable).set({ threadIds: [...user.threadIds, clean] }).where(eq(serviceUsersTable.id, user.id));
   return { ok: true };
 }
