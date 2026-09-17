@@ -15,6 +15,8 @@ import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUse
   fetchGeminiModels, updateUserAiModel } from "./lib/adminAuth";
 
 const app: Express = express();
+const validModel = /^[a-zA-Z0-9._:/-]{2,100}$/;
+const esc = (s: string) => s.replace(/[&<>\"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '\"':"&quot;", "'":"&#39;" })[c]!);
 
 // Railway terminates TLS at its edge proxy and forwards plain HTTP to this
 // container. Without trusting that proxy, Express's req.protocol/req.secure
@@ -279,7 +281,7 @@ async function finishGeminiConnect(
 
       const availableModels = await fetchGeminiModels(tokens.access_token);
       const modelOptions = availableModels
-        .map(m => `<option value="${m}" ${m === GEMINI_DEFAULT_MODEL ? "selected" : ""}>${m}</option>`)
+        .map(m => `<option value="${esc(m)}" ${m === GEMINI_DEFAULT_MODEL ? "selected" : ""}>${esc(m)}</option>`)
         .join("");
 
       res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -292,6 +294,10 @@ async function finishGeminiConnect(
         <form method="POST" action="/connect/gemini/select-model">
           <input type="hidden" name="ownerKey" value="${ownerKey}" />
           <select name="model">${modelOptions}</select>
+          <label style="display:block;text-align:left;color:#94a3b8;font-size:13px;margin:0 0 6px">Hoac tu dan ten model moi</label>
+          <input name="customModel" list="gemini-model-list" placeholder="Vi du: gemini-3-pro-preview">
+          <datalist id="gemini-model-list">${availableModels.map(m => `<option value="${esc(m)}"></option>`).join("")}</datalist>
+          <p style="color:#64748b;font-size:12px;margin:-8px 0 14px;text-align:left">O nay uu tien hon danh sach. Dung khi Gemini vua ra model moi.</p>
           <button type="submit">Xac nhan Model &amp; Bat dau dung</button>
         </form>
       </div></body></html>`);
@@ -350,9 +356,10 @@ app.post("/connect/gemini/paste-code", async (req: Request, res: Response) => {
 
 
 app.post("/connect/gemini/select-model", async (req: Request, res: Response) => {
-  const { ownerKey, model } = req.body as { ownerKey?: string; model?: string };
-  if (ownerKey && model) {
-    await updateUserAiModel(ownerKey, model.replace(/^models\//, "").trim());
+  const { ownerKey, model, customModel } = req.body as { ownerKey?: string; model?: string; customModel?: string };
+  const selectedModel = String(customModel?.trim() || model?.trim() || "").replace(/^models\//, "").trim();
+  if (ownerKey && validModel.test(selectedModel)) {
+    await updateUserAiModel(ownerKey, selectedModel);
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cai dat thanh cong</title>

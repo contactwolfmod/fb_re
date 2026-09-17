@@ -204,18 +204,31 @@ export async function listUserAiConfigs(): Promise<UserAiConfig[]> {
   return rows.map(row => ({ ...row, refreshToken: row.refreshToken ?? undefined, baseUrl: row.baseUrl ?? undefined, providerLabel: row.providerLabel ?? undefined })).sort((a, b) => b.connectedAt - a.connectedAt);
 }
 
+// Known Gemini chat models accepted by cloudcode-pa. Newest first so the
+// dropdown defaults to the most capable options. Google ships new aliases
+// faster than we can redeploy, so the UI also accepts a free-form model name.
+export const GEMINI_KNOWN_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.8-pro",
+  "gemini-3-pro-preview",
+  "gemini-3-flash-preview",
+  "gemini-3-pro",
+  "gemini-3-flash",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-preview-09-2025",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash",
+] as const;
+
 export async function fetchGeminiModels(_accessToken: string): Promise<string[]> {
   // Code Assist OAuth tokens use cloud-platform scope and cloudcode-pa native API.
   // The public generativelanguage model-list endpoint is not reliable for these
   // tokens, so expose known Gemini chat models that cloudcode-pa accepts.
-  return [
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-  ];
+  return [...GEMINI_KNOWN_MODELS];
 }
 
 // ── Managed service users (customers) ───────────────────────────────────────────

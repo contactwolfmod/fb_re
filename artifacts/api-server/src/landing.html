@@ -4,18 +4,36 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>WolfMod Bot - AI Facebook Messenger</title>
+<script>
+(function(){
+ var t=localStorage.getItem("wm_theme");
+ if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";
+ document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 <style>
-:root{--bg:#070b18;--card:rgba(12,18,38,.75);--border:rgba(59,130,246,.12);--accent:#3b82f6;--accent2:#f59e0b;--text:#e8ecf4;--muted:#7b8aa8;--glass:rgba(255,255,255,.04)}
+:root{--bg:#070b18;--card:rgba(12,18,38,.75);--border:rgba(59,130,246,.12);--accent:#3b82f6;--accent2:#f59e0b;--text:#e8ecf4;--muted:#7b8aa8;--glass:rgba(255,255,255,.04);--nav-bg:rgba(6,8,15,.65);--grid-line:rgba(59,130,246,.04);--orb-opacity:.3}
+html[data-theme="light"]{--bg:#f5f7fc;--card:rgba(255,255,255,.85);--border:rgba(37,99,235,.16);--accent:#2563eb;--accent2:#d97706;--text:#101828;--muted:#53627c;--glass:rgba(16,24,40,.04);--nav-bg:rgba(255,255,255,.75);--grid-line:rgba(37,99,235,.06);--orb-opacity:.16}
+html[data-theme="light"] .hero h1 span{background:linear-gradient(135deg,#101828 20%,var(--accent),var(--accent2) 90%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+html[data-theme="light"] .fc-val{color:#101828}
+html[data-theme="light"] .lang-btn{background:rgba(16,24,40,.06);border-color:rgba(16,24,40,.12);color:#101828}
+html[data-theme="light"] .lang-btn:hover{background:rgba(16,24,40,.12)}
+html[data-theme="light"] .nav-links a:hover{color:#101828}
+html[data-theme="light"] .btn-glass{border-color:rgba(16,24,40,.12)}
+html[data-theme="light"] .logo{color:#101828}
+html[data-theme="light"] .input-row input{background:rgba(16,24,40,.04);border-color:rgba(16,24,40,.14);color:#101828}
+html[data-theme="light"] .input-row input::placeholder{color:rgba(16,24,40,.35)}
+html,body{transition:background-color .25s ease,color .25s ease}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
 body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden}
 .bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none}
-.bg-mesh .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.3;animation:drift 18s ease-in-out infinite alternate}
+.bg-mesh .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:var(--orb-opacity);animation:drift 18s ease-in-out infinite alternate}
 .orb-1{width:600px;height:600px;background:radial-gradient(circle,#3b82f6,transparent 70%);top:-10%;left:-8%}
 .orb-2{width:500px;height:500px;background:radial-gradient(circle,#f59e0b,transparent 70%);bottom:5%;right:-5%;animation-delay:-6s}
 .orb-3{width:400px;height:400px;background:radial-gradient(circle,#60a5fa,transparent 70%);top:40%;left:50%;animation-delay:-12s}
 @keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.12)}100%{transform:translate(-30px,20px) scale(.95)}}
-.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);background-size:60px 60px}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px) saturate(1.4);background:rgba(6,8,15,.65);border-bottom:1px solid rgba(59,130,246,.08);padding:0 clamp(1rem,4vw,3rem);height:64px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .3s}
+.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:60px 60px}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px) saturate(1.4);background:var(--nav-bg);border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,3rem);height:64px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .3s}
 nav.scrolled{box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .logo{font-weight:800;font-size:1.15rem;color:#fff;text-decoration:none;letter-spacing:-.02em}
 .logo b{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -122,8 +140,9 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
   <div class="nav-links">
     <a href="#tinh-nang" class="hide-m" data-i18n="nav_features">Tính năng</a>
     <a href="#huong-dan" class="hide-m" data-i18n="nav_guide">Hướng dẫn</a>
+    <button class="lang-btn" id="themeToggle" onclick="toggleTheme()" title="Sáng / Tối">🌙</button>
     <button class="lang-btn" id="langToggle" onclick="toggleLang()">EN</button>
-    <a href="/admin" class="nav-cta">Admin Panel</a>
+    <a href="#truy-cap" class="nav-cta" data-i18n="nav_cta_user">Trang khách hàng</a>
   </div>
 </nav>
 
@@ -133,8 +152,8 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
     <h1><span data-i18n="hero_h1">Tự động trả lời<br>thông minh</span><br><span data-i18n="hero_h1b">bằng AI</span></h1>
     <p class="hero-desc" data-i18n="hero_desc">Kết nối Gemini vào Facebook Messenger. Bot phân tích và trả lời mọi tin nhắn 24/7. User tự đăng nhập Google, chọn model riêng.</p>
     <div class="hero-actions">
-      <a href="/admin" class="btn btn-glow" data-i18n="hero_btn_admin">Vào Admin Panel</a>
-      <a href="#truy-cap" class="btn btn-glass" data-i18n="hero_btn_user">Trang khách hàng</a>
+      <a href="#truy-cap" class="btn btn-glow" data-i18n="hero_btn_user">Trang khách hàng</a>
+      <a href="#tinh-nang" class="btn btn-glass" data-i18n="hero_btn_features">Xem tính năng</a>
     </div>
   </div>
   <div class="hero-visual">
@@ -250,12 +269,12 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
 
 <div class="cta-block reveal">
   <h2 data-i18n="cta_title">Sẵn sàng bắt đầu?</h2>
-  <p data-i18n="cta_desc">Vào admin panel để cài đặt bot của bạn ngay bây giờ.</p>
-  <a href="/admin" class="btn btn-glow" style="font-size:1rem;padding:1rem 2.5rem" data-i18n="cta_btn">Vào Admin Panel</a>
+  <p data-i18n="cta_desc">Nhập ID khách hàng của bạn để vào trang quản lý riêng.</p>
+  <a href="#truy-cap" class="btn btn-glow" style="font-size:1rem;padding:1rem 2.5rem" data-i18n="cta_btn">Trang khách hàng</a>
 </div>
 
 <footer>
-  <p>WolfMod Bot &bull; <a href="/admin">Admin</a> &bull; <span data-i18n="footer_support">Hỗ trợ:</span> Gemini, Claude, GPT</p>
+  <p>WolfMod Bot &bull; <span data-i18n="footer_support">Hỗ trợ:</span> Gemini, Claude, GPT</p>
   <p style="margin-top:.5rem">Built with Express + TypeScript &bull; Deployed on Railway</p>
 </footer><script>
 const T={
@@ -264,7 +283,8 @@ const T={
   hero_tag:"\u0110ang ho\u1ea1t \u0111\u1ed9ng",
   hero_h1:"T\u1ef1 \u0111\u1ed9ng tr\u1ea3 l\u1eddi<br>th\u00f4ng minh",hero_h1b:"b\u1eb1ng AI",
   hero_desc:"K\u1ebft n\u1ed1i Gemini v\u00e0o Facebook Messenger. Bot ph\u00e2n t\u00edch v\u00e0 tr\u1ea3 l\u1eddi m\u1ecdi tin nh\u1eafn 24/7. User t\u1ef1 \u0111\u0103ng nh\u1eadp Google, ch\u1ecdn model ri\u00eang.",
-  hero_btn_admin:"V\u00e0o Admin Panel",hero_btn_user:"Trang kh\u00e1ch h\u00e0ng",
+  nav_cta_user:"Trang kh\u00e1ch h\u00e0ng",
+  hero_btn_user:"Trang kh\u00e1ch h\u00e0ng",hero_btn_features:"Xem t\u00ednh n\u0103ng",
   fc_msg:"X\u1eed l\u00fd tin nh\u1eafn",fc_resp:"Ph\u1ea3n h\u1ed3i",
   access_title:"Truy c\u1eadp trang kh\u00e1ch h\u00e0ng",
   access_hint:"Nh\u1eadp ID do admin cung c\u1ea5p \u0111\u1ec3 v\u00e0o trang qu\u1ea3n l\u00fd ri\u00eang \u2014 ch\u1ecdn model Gemini, test chat, k\u1ebft n\u1ed1i Google.",
@@ -280,7 +300,7 @@ const T={
   s2_t:"T\u1ea1o kh\u00e1ch h\u00e0ng",s2_d:"Nh\u1eadp t\u00ean, ID, m\u1eadt kh\u1ea9u v\u00e0 FB Thread ID. Kh\u00e1ch h\u00e0ng s\u1ebd c\u00f3 trang ri\u00eang t\u1ea1i /u/id.",
   s3_t:"User k\u1ebft n\u1ed1i Gemini",s3_d:"Kh\u00e1ch h\u00e0ng \u0111\u0103ng nh\u1eadp trang c\u1ee7a h\u1ecd, b\u1ea5m \"\u0110\u0103ng nh\u1eadp Google\", ch\u1ecdn model Gemini t\u1eeb danh s\u00e1ch.",
   s4_t:"Bot ho\u1ea1t \u0111\u1ed9ng",s4_d:"Xong. Bot t\u1ef1 \u0111\u1ed9ng tr\u1ea3 l\u1eddi m\u1ecdi tin nh\u1eafn Messenger b\u1eb1ng model m\u00e0 kh\u00e1ch h\u00e0ng \u0111\u00e3 ch\u1ecdn.",
-  cta_title:"S\u1eb5n s\u00e0ng b\u1eaft \u0111\u1ea7u?",cta_desc:"V\u00e0o admin panel \u0111\u1ec3 c\u00e0i \u0111\u1eb7t bot c\u1ee7a b\u1ea1n ngay b\u00e2y gi\u1edd.",cta_btn:"V\u00e0o Admin Panel",
+  cta_title:"S\u1eb5n s\u00e0ng b\u1eaft \u0111\u1ea7u?",cta_desc:"Nh\u1eadp ID kh\u00e1ch h\u00e0ng c\u1ee7a b\u1ea1n \u0111\u1ec3 v\u00e0o trang qu\u1ea3n l\u00fd ri\u00eang.",cta_btn:"Trang kh\u00e1ch h\u00e0ng",
   footer_support:"H\u1ed7 tr\u1ee3:"
  },
  en:{
@@ -288,7 +308,8 @@ const T={
   hero_tag:"Live now",
   hero_h1:"Smart auto-reply<br>powered",hero_h1b:"by AI",
   hero_desc:"Connect Gemini to Facebook Messenger. Bot analyzes and replies to every message 24/7. Users sign in with Google and pick their own model.",
-  hero_btn_admin:"Admin Panel",hero_btn_user:"Customer page",
+  nav_cta_user:"Customer page",
+  hero_btn_user:"Customer page",hero_btn_features:"See features",
   fc_msg:"Messages handled",fc_resp:"Response",
   access_title:"Access your customer page",
   access_hint:"Enter the ID provided by admin to manage your own page \u2014 pick Gemini model, test chat, connect Google.",
@@ -304,7 +325,7 @@ const T={
   s2_t:"Create customer",s2_d:"Enter name, ID, password and FB Thread ID. Customer gets their own page at /u/id.",
   s3_t:"User connects Gemini",s3_d:"Customer logs into their page, clicks \"Sign in with Google\", picks a Gemini model from the list.",
   s4_t:"Bot is live",s4_d:"Done. Bot auto-replies to every Messenger message using the model the customer chose.",
-  cta_title:"Ready to start?",cta_desc:"Go to admin panel to set up your bot now.",cta_btn:"Admin Panel",
+  cta_title:"Ready to start?",cta_desc:"Enter your customer ID to open your own management page.",cta_btn:"Customer page",
   footer_support:"Supports:"
  }
 };
@@ -322,6 +343,17 @@ function applyLang(l){
 }
 function toggleLang(){applyLang(lang==="vi"?"en":"vi")}
 applyLang(lang);
+
+function applyTheme(t){
+ document.documentElement.setAttribute("data-theme",t);
+ localStorage.setItem("wm_theme",t);
+ const b=document.getElementById("themeToggle");
+ if(b){b.textContent=t==="light"?"☀️":"🌙";}
+}
+function toggleTheme(){
+ applyTheme(document.documentElement.getAttribute("data-theme")==="light"?"dark":"light");
+}
+applyTheme(document.documentElement.getAttribute("data-theme")||"dark");
 
 const nav=document.getElementById("nav");
 window.addEventListener("scroll",()=>nav.classList.toggle("scrolled",scrollY>40),{passive:true});

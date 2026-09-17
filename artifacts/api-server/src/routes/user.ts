@@ -39,12 +39,38 @@ function css() {
       --text:#f8fafc;--text-dim:#94a3b8;--text-mute:#64748b;
       --success:#4ade80;--success-soft:rgba(52,211,153,.1);
       --danger:#f87171;--danger-soft:rgba(233,69,96,.1);
+      --input-bg:rgba(255,255,255,.04);
+      --chat-bg:rgba(0,0,0,.18);
+      --bot-msg:rgba(255,255,255,.05);--bot-msg-text:#e2e8f0;
+      --shadow-card:0 16px 44px rgba(0,0,0,.35);
+      --mono-accent:#818cf8;
+      --glow-1:rgba(233,69,96,.13);--glow-2:rgba(56,189,248,.09);
       --radius-lg:18px;--radius-md:13px;--radius-sm:9px;
       --font:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
     }
+    html[data-theme="light"]{
+      --bg:#f4f6fb;--accent:#e11d48;--accent-dark:#be123c;--accent-soft:rgba(225,29,72,.1);
+      --surface:rgba(16,24,40,.03);--surface-hover:rgba(16,24,40,.06);
+      --border:rgba(16,24,40,.12);--border-soft:rgba(16,24,40,.08);
+      --card:rgba(255,255,255,.9);
+      --text:#101828;--text-dim:#475467;--text-mute:#667085;
+      --success:#15803d;--success-soft:rgba(22,163,74,.12);
+      --danger:#dc2626;--danger-soft:rgba(220,38,38,.1);
+      --input-bg:rgba(16,24,40,.03);
+      --chat-bg:rgba(16,24,40,.03);
+      --bot-msg:rgba(16,24,40,.06);--bot-msg-text:#1f2937;
+      --shadow-card:0 12px 32px rgba(16,24,40,.1);
+      --mono-accent:#4f46e5;
+      --glow-1:rgba(225,29,72,.08);--glow-2:rgba(37,99,235,.07);
+    }
+    html,body{transition:background-color .25s ease,color .25s ease}
+
+    .theme-btn{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);border-radius:9px;padding:.42rem .7rem;font-size:.9rem;line-height:1;cursor:pointer;font-family:inherit}
+    .theme-btn:hover{color:var(--text);border-color:var(--accent)}
+    .header-actions{display:flex;align-items:center;gap:8px}
     *{box-sizing:border-box}
     html,body{margin:0;padding:0}
-    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;background-image:radial-gradient(circle at 8% 0%,var(--accent-soft),transparent 30%),radial-gradient(circle at 92% 8%,rgba(56,189,248,.09),transparent 26%);background-attachment:fixed}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;background-image:radial-gradient(circle at 8% 0%,var(--glow-1),transparent 30%),radial-gradient(circle at 92% 8%,var(--glow-2),transparent 26%);background-attachment:fixed}
     a{color:inherit}
     .page-wrap{max-width:1320px;margin:0 auto;padding:36px 28px 70px}
 
@@ -88,7 +114,7 @@ function css() {
     .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
     label{display:block;font-size:.78rem;color:var(--text-dim);margin-bottom:.35rem;font-weight:600}
-    input,select,textarea{width:100%;padding:.62rem .8rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.86rem;outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+    input,select,textarea{width:100%;padding:.62rem .8rem;background:var(--input-bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.86rem;outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s}
     input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,69,96,.15)}
     input::placeholder,textarea::placeholder{color:var(--text-mute)}
 
@@ -97,7 +123,7 @@ function css() {
     .alert-err{background:var(--danger-soft);border:1px solid rgba(233,69,96,.25);color:#fca5a5}
     .alert-ok{background:var(--success-soft);border:1px solid rgba(52,211,153,.22);color:#86efac}
 
-    .card{background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:var(--radius-lg);box-shadow:0 16px 44px rgba(0,0,0,.35);padding:22px}
+    .card{background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:22px}
     .card-head{display:flex;align-items:center;gap:11px;margin-bottom:16px}
     .card-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
     .card-title{font-size:.98rem;font-weight:750;color:var(--text)}
@@ -120,9 +146,9 @@ function css() {
     .thread-add-form{display:flex;gap:8px;margin-bottom:12px}
     .thread-add-form input{flex:1}
     .thread-list{display:flex;flex-direction:column;gap:8px}
-    .thread-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
-    .thread-id{display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem;color:#818cf8}
-    .icon-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text-dim);border-radius:7px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;flex:none}
+    .thread-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
+    .thread-id{display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem;color:var(--mono-accent)}
+    .icon-btn{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);border-radius:7px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;flex:none}
     .icon-btn:hover{color:#fca5a5;border-color:rgba(239,68,68,.35)}
     .empty-hint{font-size:.78rem;color:var(--text-mute);padding:6px 2px}
 
@@ -130,9 +156,9 @@ function css() {
     .gemini-status{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:650;color:#4ade80}
     .field-hint{font-size:.72rem;color:var(--text-mute);margin:-4px 0 12px}
 
-    .messages{min-height:200px;max-height:46vh;overflow-y:auto;margin-bottom:12px;padding:10px;background:rgba(0,0,0,.18);border-radius:10px;border:1px solid var(--border-soft);display:flex;flex-direction:column;gap:9px}
+    .messages{min-height:200px;max-height:46vh;overflow-y:auto;margin-bottom:12px;padding:10px;background:var(--chat-bg);border-radius:10px;border:1px solid var(--border-soft);display:flex;flex-direction:column;gap:9px}
     .msg{padding:9px 13px;border-radius:12px;white-space:pre-wrap;font-size:.86rem;line-height:1.45;max-width:82%}
-    .msg.bot{background:rgba(255,255,255,.05);color:#e2e8f0;align-self:flex-start;border-bottom-left-radius:3px}
+    .msg.bot{background:var(--bot-msg);color:var(--bot-msg-text);align-self:flex-start;border-bottom-left-radius:3px}
     .msg.me{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
     .chat-form{display:flex;gap:8px;align-items:flex-end}
     .chat-form textarea{resize:vertical;min-height:44px}
@@ -159,8 +185,25 @@ function css() {
   `;
 }
 
+// Applied before first paint so the saved theme never flashes the wrong colors.
+const THEME_BOOT_SCRIPT = `(function(){var t=null;try{t=localStorage.getItem("wm_theme")}catch(e){}if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.setAttribute("data-theme",t)})();`;
+
+const THEME_RUNTIME_SCRIPT = `
+function wmApplyTheme(t){
+  document.documentElement.setAttribute("data-theme",t);
+  try{localStorage.setItem("wm_theme",t)}catch(e){}
+  var b=document.getElementById("themeToggle");
+  if(b){b.textContent=t==="light"?"\\u2600\\uFE0F":"\\uD83C\\uDF19";b.setAttribute("aria-label",t==="light"?"Chuyển sang nền tối":"Chuyển sang nền sáng")}
+}
+function wmToggleTheme(){wmApplyTheme(document.documentElement.getAttribute("data-theme")==="light"?"dark":"light")}
+wmApplyTheme(document.documentElement.getAttribute("data-theme")||"dark");
+`;
+
+const themeButton = () =>
+  `<button type="button" id="themeToggle" class="theme-btn" onclick="wmToggleTheme()" title="Đổi nền sáng / tối">🌙</button>`;
+
 function page(title: string, body: string, opts: { loginPage?: boolean } = {}) {
-  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${css()}</style></head><body class="${opts.loginPage ? "login-body" : ""}"><main class="${opts.loginPage ? "" : "page-wrap"}">${body}</main></body></html>`;
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><script>${THEME_BOOT_SCRIPT}</script><style>${css()}</style></head><body class="${opts.loginPage ? "login-body" : ""}"><main class="${opts.loginPage ? "" : "page-wrap"}">${body}</main><script>${THEME_RUNTIME_SCRIPT}</script></body></html>`;
 }
 
 async function current(req: Request, id: string) {
@@ -284,7 +327,10 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
     const err = req.query["err"] ? `<div class="alert alert-err">${icon("alert")}<span>Mật khẩu không đúng.</span></div>` : "";
     res.send(page("Đăng nhập", `
       <div class="login-card">
-        <div class="login-mark">${icon("shield", 22)}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div class="login-mark">${icon("shield", 22)}</div>
+          ${themeButton()}
+        </div>
         <h1>${esc(user.name)}</h1>
         <p class="sub">Đăng nhập để quản lý và chọn model Gemini của bạn.</p>
         ${err}
@@ -325,11 +371,11 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
         </form>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <div><span style="font-size:.72rem;color:var(--text-mute)">Base URL</span><div class="mono" style="font-size:.78rem;color:#818cf8;word-break:break-all">${esc(c.baseUrl!)}</div></div>
+        <div><span style="font-size:.72rem;color:var(--text-mute)">Base URL</span><div class="mono" style="font-size:.78rem;color:var(--mono-accent);word-break:break-all">${esc(c.baseUrl!)}</div></div>
         <div><span style="font-size:.72rem;color:var(--text-mute)">Model</span><div style="font-size:.85rem;font-weight:650;color:var(--text)">${esc(c.model)}</div></div>
       </div>
       <form method="post" action="/u/${id}/model" style="margin-top:12px;display:flex;gap:8px;align-items:end">
-        <div style="flex:1"><label style="font-size:.72rem">Đổi model</label><input name="customModel" value="${esc(c.model)}" required></div>
+        <div style="flex:1"><label style="font-size:.72rem">Đổi model</label><input name="customModel" value="${esc(c.model)}" required placeholder="Dán tên model bất kỳ..."></div>
         <button type="submit" class="btn btn-primary btn-sm">${icon("check", 13)} Lưu</button>
       </form>
     </div>`;
@@ -354,8 +400,10 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
       <form method="post" action="/u/${id}/model" style="margin-top:12px">
         <label>Chọn Model Gemini</label>
         <select name="model" required style="margin-bottom:8px">${opts}</select>
-        <label style="font-size:.72rem">Hoặc tự gõ model khác</label>
-        <input name="customModel" placeholder="Để trống để dùng model ở trên..." style="margin-bottom:12px">
+        <label style="font-size:.72rem">Hoặc tự dán tên model bất kỳ</label>
+        <input name="customModel" list="gemini-model-list" placeholder="Ví dụ: gemini-3-pro-preview" style="margin-bottom:6px">
+        <datalist id="gemini-model-list">${models.map(m => `<option value="${esc(m)}"></option>`).join("")}</datalist>
+        <div class="field-hint">Ô này ưu tiên hơn danh sách ở trên. Dùng khi Google vừa ra model mới chưa có sẵn trong danh sách.</div>
         <button type="submit" class="btn btn-primary" style="width:100%">${icon("check")} Lưu Model</button>
       </form>
     </div>`;
@@ -397,7 +445,10 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
           </div>
         </div>
       </div>
-      <form method="post" action="/u/${id}/logout"><button class="btn btn-ghost">${icon("logout")} Đăng xuất</button></form>
+      <div class="header-actions">
+        ${themeButton()}
+        <form method="post" action="/u/${id}/logout" style="margin:0"><button class="btn btn-ghost">${icon("logout")} Đăng xuất</button></form>
+      </div>
     </header>
     ${geminiOk}${modelSaved}${modelErr}${threadErr}${fbBotErr}
     <div class="layout-grid">
