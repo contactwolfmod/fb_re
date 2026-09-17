@@ -19,6 +19,9 @@ import {
 import { getClaudeReply } from "../bot/claude";
 import { botState } from "../bot/state";
 import { icon } from "../lib/icons";
+import { startTenantBot, stopTenantBot, submitTenantBot2FA, getTenantBotState } from "../bot/tenantBots";
+import { TwoFactorRequired, type LoginCredentials } from "../bot/facebookEngine";
+import { parseAppState, validateRequiredCookies } from "../lib/facebookCookies";
 
 const router = Router();
 const validId = /^[a-z0-9-]{3,48}$/;
@@ -207,6 +210,53 @@ function promptCard(id: string, user: ServiceUser, saved: boolean) {
   </section>`;
 }
 
+const FB_BOT_STATUS_LABEL: Record<string, string> = {
+  stopped: "Chưa kết nối",
+  connecting: "Đang kết nối...",
+  running: "Đang chạy",
+  waiting_2fa: "Cần mã 2FA",
+  error: "Lỗi",
+};
+
+function fbBotCard(id: string, state: { status: string; error: string | null; messagesHandled: number } | undefined) {
+  const status = state?.status ?? "stopped";
+  const badgeClass = status === "running" ? "badge-ok" : status === "waiting_2fa" || status === "error" ? "badge-exp" : "badge-used";
+  const isRunning = status === "running" || status === "connecting";
+  const isWaiting2FA = status === "waiting_2fa";
+
+  return `<section class="card">
+    <div class="card-head"><div class="card-icon">${icon("facebook", 15)}</div><div><div class="card-title">Kết nối Facebook riêng <span style="font-size:.68rem;color:var(--text-mute);font-weight:600">(Beta)</span></div><div class="card-note">Dùng tài khoản Facebook của riêng bạn để bot tự trả lời tin nhắn gửi đến đúng inbox của bạn.</div></div></div>
+    <div class="alert" style="background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.3);color:#fdba74">${icon("alert")}<span><strong>Lưu ý rủi ro:</strong> tự động hóa tài khoản Facebook cá nhân có thể khiến Facebook khóa/hạn chế tài khoản đó. Khuyến nghị dùng một tài khoản Facebook phụ/kinh doanh, không dùng tài khoản chính của bạn.</span></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <span class="badge ${badgeClass}">${FB_BOT_STATUS_LABEL[status] ?? status}</span>
+      ${status === "running" ? `<span style="font-size:.76rem;color:var(--text-mute)">${state?.messagesHandled ?? 0} tin nhắn đã xử lý</span>` : ""}
+    </div>
+    ${state?.error ? `<div class="alert alert-err">${icon("alert")}<span>${esc(state.error)}</span></div>` : ""}
+    ${isWaiting2FA ? `
+      <form method="post" action="/u/${id}/fb-bot/2fa">
+        <label>Mã xác minh 2FA</label>
+        <input name="code" inputmode="numeric" placeholder="Nhập mã 6 số..." required style="margin-bottom:12px">
+        <button type="submit" class="btn btn-primary" style="width:100%">${icon("check")} Xác nhận mã 2FA</button>
+      </form>
+    ` : isRunning ? `
+      <form method="post" action="/u/${id}/fb-bot/stop">
+        <button type="submit" class="btn btn-danger" style="width:100%">${icon("trash")} Dừng bot</button>
+      </form>
+    ` : `
+      <form method="post" action="/u/${id}/fb-bot/start">
+        <label>Cookie Facebook (khuyến nghị)</label>
+        <textarea name="cookies" rows="3" placeholder="c_user=...; xs=...; datr=... (copy từ DevTools → Application → Cookies)" style="margin-bottom:6px"></textarea>
+        <div style="font-size:.72rem;color:var(--text-mute);margin-bottom:12px">Hoặc đăng nhập bằng email/mật khẩu bên dưới (có thể cần xác minh 2FA)</div>
+        <div class="mode-grid">
+          <div><label>Email/SĐT</label><input name="email" placeholder="email@vidu.com" style="margin-bottom:0"></div>
+          <div><label>Mật khẩu</label><input name="password" type="password" placeholder="Mật khẩu Facebook" style="margin-bottom:0"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:14px">${icon("facebook", 15)} Kết nối Facebook</button>
+      </form>
+    `}
+  </section>`;
+}
+
 router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
   const id = (req.params.id as string).toLowerCase();
   const user = await getServiceUser(id);
@@ -235,6 +285,7 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
   const modelSaved = req.query["modelSaved"] ? `<div class="alert alert-ok">${icon("check")}<span>Đã cập nhật model Gemini thành công! Bot Facebook sẽ trả lời bằng model này.</span></div>` : "";
   const modelErr = req.query["modelErr"] ? `<div class="alert alert-err">${icon("alert")}<span>Không lưu được model. Vui lòng kiểm tra lại.</span></div>` : "";
   const threadErr = req.query["threadErr"] ? `<div class="alert alert-err">${icon("alert")}<span>${esc(decodeURIComponent(String(req.query["threadErr"])))}</span></div>` : "";
+  const fbBotErr = req.query["fbBotErr"] ? `<div class="alert alert-err">${icon("alert")}<span>${esc(decodeURIComponent(String(req.query["fbBotErr"])))}</span></div>` : "";
 
   let aiBlock = "";
   const isCustomProvider = !!(c && c.baseUrl);
@@ -333,6 +384,8 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
     ${geminiOk}${modelSaved}${modelErr}${threadErr}
     ${replyModeCard(id, user)}
     ${promptCard(id, user, !!req.query["promptSaved"])}
+    ${fbBotErr}
+    ${fbBotCard(id, getTenantBotState(user.id))}
     ${aiBlock}
     <section class="card">
       <div class="card-head"><div class="card-icon">${icon("message", 15)}</div><div><div class="card-title">Test Chat trực tiếp</div><div class="card-note">Thử ngay để xem AI sẽ trả lời như thế nào.</div></div></div>
@@ -406,7 +459,7 @@ router.post("/u/:id/threads/remove", async (req: Request, res: Response) => {
   if (u) await removeServiceUserThread(id, String(req.body.threadId ?? ""));
   res.redirect(`/u/${id}`);
 });
-router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,u.systemPrompt||botState.systemPrompt)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
+router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,u.systemPrompt||botState.systemPrompt,u.id)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
 
 // ── Custom AI config (manual API key) ─────────────────────────────────────────
 router.post("/u/:id/ai-config", async (req: Request, res: Response) => {
@@ -437,6 +490,62 @@ router.post("/u/:id/ai-config/delete", async (req: Request, res: Response) => {
   const u = await current(req, id);
   if (u) await deleteUserAiConfig(u.id);
   res.redirect(`/u/${id}?configDeleted=1`);
+});
+
+// ── Per-customer Facebook bot (Beta) ──────────────────────────────────────────
+router.post("/u/:id/fb-bot/start", async (req: Request, res: Response) => {
+  const id = (req.params.id as string).toLowerCase();
+  const u = await current(req, id);
+  if (!u) { res.redirect(`/u/${id}`); return; }
+
+  const { cookies, email, password } = req.body as { cookies?: string; email?: string; password?: string };
+  let credentials: LoginCredentials;
+
+  if (cookies?.trim()) {
+    const { parsed, error } = parseAppState(cookies);
+    if (error) { res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent(error)}`); return; }
+    const cookieErr = validateRequiredCookies(parsed);
+    if (cookieErr) { res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent(cookieErr)}`); return; }
+    credentials = { type: "appstate", appState: parsed };
+  } else if (email?.trim() && password?.trim()) {
+    credentials = { type: "credentials", email: email.trim(), password };
+  } else {
+    res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent("Vui lòng dán cookie Facebook hoặc nhập email/mật khẩu.")}`);
+    return;
+  }
+
+  try {
+    await startTenantBot(id, credentials);
+  } catch (err: any) {
+    if (!(err instanceof TwoFactorRequired || err?.name === "TwoFactorRequired")) {
+      res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent(err?.message ?? "Kết nối Facebook thất bại.")}`);
+      return;
+    }
+    // 2FA required — state already reflects "waiting_2fa", just re-render.
+  }
+  res.redirect(`/u/${id}`);
+});
+
+router.post("/u/:id/fb-bot/2fa", async (req: Request, res: Response) => {
+  const id = (req.params.id as string).toLowerCase();
+  const u = await current(req, id);
+  if (!u) { res.redirect(`/u/${id}`); return; }
+  const { code } = req.body as { code?: string };
+  if (!code?.trim()) { res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent("Vui lòng nhập mã 2FA.")}`); return; }
+  try {
+    await submitTenantBot2FA(id, code.trim());
+  } catch (err: any) {
+    res.redirect(`/u/${id}?fbBotErr=${encodeURIComponent(err?.message ?? "Xác minh 2FA thất bại.")}`);
+    return;
+  }
+  res.redirect(`/u/${id}`);
+});
+
+router.post("/u/:id/fb-bot/stop", async (req: Request, res: Response) => {
+  const id = (req.params.id as string).toLowerCase();
+  const u = await current(req, id);
+  if (u) stopTenantBot(id);
+  res.redirect(`/u/${id}`);
 });
 
 export default router;

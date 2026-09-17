@@ -10,7 +10,7 @@ const replitApiKey  = process.env["AI_INTEGRATIONS_ANTHROPIC_API_KEY"];
 const anthropicKey  = process.env["ANTHROPIC_API_KEY"];
 const githubToken   = process.env["GITHUB_TOKEN"] ?? process.env["GITHUB_PERSONAL_ACCESS_TOKEN"];
 
-type Provider = "anthropic" | "openai-compat" | "none";
+type Provider = "anthropic" | "openai-compat" | "gemini-code-assist" | "none";
 
 let staticProvider: Provider = "none";
 let staticAnthropicClient: Anthropic | undefined;
@@ -41,24 +41,38 @@ interface ResolvedClient {
   provider: Provider;
   anthropicClient?: Anthropic;
   openaiClient?: OpenAI;
+  accessToken?: string;
   model: string;
   timeoutMs: number;
   maxTokens: number;
 }
 
-async function resolveClient(threadId?: string): Promise<ResolvedClient> {
-  // Per-user Gemini config takes highest priority. Resolve the owning service
-  // user first (their config is keyed by their account ID, shared across all
-  // of their configured threads); fall back to the raw threadId for the
-  // legacy one-off connect-link flow that has no service user account.
-  if (threadId) {
-    const owner = await resolveServiceUserForThread(threadId);
-    const userConfig = await getUserAiConfig(owner?.id ?? threadId);
+async function resolveClient(threadId?: string, ownerKeyOverride?: string): Promise<ResolvedClient> {
+  // Per-user Gemini config takes highest priority. Callers that already
+  // know the owner (e.g. a per-tenant Facebook bot instance, or the shared
+  // bot after it already resolved the thread) pass ownerKeyOverride to skip
+  // resolution entirely. Otherwise resolve the owning service user first
+  // (their config is keyed by their account ID, shared across all of their
+  // configured threads); fall back to the raw threadId for the legacy
+  // one-off connect-link flow that has no service user account.
+  const effectiveOwnerKey = ownerKeyOverride
+    ?? (threadId ? (await resolveServiceUserForThread(threadId))?.id : undefined)
+    ?? threadId;
+  if (effectiveOwnerKey) {
+    const userConfig = await getUserAiConfig(effectiveOwnerKey);
     if (userConfig && userConfig.accessToken) {
-      const effectiveBaseUrl = userConfig.baseUrl || GEMINI_BASE_URL;
+      if (userConfig.baseUrl) {
+        return {
+          provider: "openai-compat",
+          openaiClient: new OpenAI({ baseURL: userConfig.baseUrl, apiKey: userConfig.accessToken }),
+          model: userConfig.model,
+          timeoutMs: botState.aiTimeoutMs,
+          maxTokens: botState.aiMaxTokens,
+        };
+      }
       return {
-        provider: "openai-compat",
-        openaiClient: new OpenAI({ baseURL: effectiveBaseUrl, apiKey: userConfig.accessToken }),
+        provider: "gemini-code-assist",
+        accessToken: userConfig.accessToken,
         model: userConfig.model,
         timeoutMs: botState.aiTimeoutMs,
         maxTokens: botState.aiMaxTokens,
@@ -68,6 +82,15 @@ async function resolveClient(threadId?: string): Promise<ResolvedClient> {
   const dynamicBaseUrl = botState.aiBaseUrl;
   const dynamicApiKey  = botState.aiApiKey;
   if (dynamicBaseUrl && dynamicApiKey) {
+    if (dynamicBaseUrl === GEMINI_BASE_URL) {
+      return {
+        provider: "gemini-code-assist",
+        accessToken: dynamicApiKey,
+        model: botState.aiModel,
+        timeoutMs: botState.aiTimeoutMs,
+        maxTokens: botState.aiMaxTokens,
+      };
+    }
     return {
       provider: "openai-compat",
       openaiClient: new OpenAI({ baseURL: dynamicBaseUrl, apiKey: dynamicApiKey }),
@@ -101,16 +124,63 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
   }
 }
 
+async function callGeminiCodeAssist(opts: {
+  accessToken: string;
+  model: string;
+  history: { role: "user" | "assistant"; content: string }[];
+  systemPrompt: string;
+  maxTokens: number;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const contents = opts.history.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+  const body = {
+    model: opts.model,
+    user_prompt_id: randomId(),
+    request: {
+      contents,
+      systemInstruction: { role: "user", parts: [{ text: opts.systemPrompt }] },
+      generationConfig: { maxOutputTokens: opts.maxTokens },
+    },
+  };
+  const res = await fetch(`${GEMINI_BASE_URL}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${opts.accessToken}`,
+    },
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  });
+  const data = await res.json().catch(() => ({})) as any;
+  if (!res.ok) {
+    const message = data?.error?.message || data?.message || `${res.status} ${res.statusText}`;
+    throw Object.assign(new Error(message), { status: res.status });
+  }
+  const parts = data?.response?.candidates?.[0]?.content?.parts;
+  if (Array.isArray(parts)) {
+    return parts.map((p: any) => typeof p?.text === "string" ? p.text : "").join("").trim();
+  }
+  return "";
+}
+
+function randomId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export async function getClaudeReply(
   threadId: string,
   userMessage: string,
-  systemPrompt: string
+  systemPrompt: string,
+  ownerKeyOverride?: string
 ): Promise<string> {
   const history = conversationHistory.get(threadId) ?? [];
   history.push({ role: "user", content: userMessage });
   if (history.length > 10) history.splice(0, history.length - 10);
 
-  const { provider, anthropicClient, openaiClient, model, timeoutMs, maxTokens } = await resolveClient(threadId);
+  const { provider, anthropicClient, openaiClient, accessToken, model, timeoutMs, maxTokens } = await resolveClient(threadId, ownerKeyOverride);
   logger.info({ threadId, model, provider }, "Calling AI API");
 
   try {
@@ -125,6 +195,14 @@ export async function getClaudeReply(
       }), timeoutMs, "AI API");
       const block = response.content[0];
       replyText = block.type === "text" ? block.text : "";
+    } else if (provider === "gemini-code-assist" && accessToken) {
+      replyText = await withTimeout(callGeminiCodeAssist({
+        accessToken,
+        model,
+        history,
+        systemPrompt,
+        maxTokens,
+      }), timeoutMs, "AI API");
     } else if (openaiClient) {
       const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },

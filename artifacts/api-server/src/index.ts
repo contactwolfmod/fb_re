@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startBot, canAutoRestart } from "./bot/facebook";
+import { restoreTenantBotsOnBoot } from "./bot/tenantBots";
 import { ADMIN_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "./lib/adminAuth";
 
 const rawPort = process.env["PORT"];
@@ -67,11 +68,15 @@ app.listen(port, async (err) => {
   logger.info(
     {
       ADMIN_TOKEN: ADMIN_TOKEN ? "set" : "MISSING",
-      GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? `set (${GOOGLE_CLIENT_ID.length} chars)` : "MISSING",
-      GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET ? "set" : "MISSING",
+      GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? `built-in (${GOOGLE_CLIENT_ID.length} chars)` : "MISSING",
+      GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET ? "built-in" : "MISSING",
     },
     "Env var check at boot",
   );
+
+  // Restart any per-customer Facebook bots that were running before this
+  // redeploy (independent of the shared admin bot's own startup below).
+  restoreTenantBotsOnBoot();
 
   // ── Priority 1: FB_COOKIES env var (Railway / explicit config) ──────────────
   const fbCookiesRaw = process.env["FB_COOKIES"];
