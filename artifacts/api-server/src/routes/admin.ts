@@ -1,4 +1,4 @@
-﻿import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import {
   ADMIN_TOKEN,
   requireAdmin,
@@ -19,54 +19,216 @@ import { botState } from "../bot/state";
 const router: IRouter = Router();
 
 // ═══════════════════════════════════════════════════════
-// Helpers
+// Icons — small inline SVGs (feather-style), no external assets
+// ═══════════════════════════════════════════════════════
+
+const ICONS: Record<string, string> = {
+  grid: `<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>`,
+  users: `<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
+  link: `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
+  cpu: `<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>`,
+  home: `<path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/>`,
+  logout: `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>`,
+  plus: `<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>`,
+  trash: `<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>`,
+  external: `<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>`,
+  lock: `<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`,
+  unlock: `<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>`,
+  shield: `<path d="M12 2 20 6v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/>`,
+  bolt: `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`,
+  copy: `<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>`,
+  check: `<polyline points="20 6 9 17 4 12"/>`,
+  alert: `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
+};
+
+function icon(name: string, size = 16) {
+  const body = ICONS[name] ?? "";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// Styles
 // ═══════════════════════════════════════════════════════
 
 function css() {
   return `
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#0f0f1e;color:#e2e8f0;min-height:100vh;padding:24px;background-image:radial-gradient(circle at top left,rgba(233,69,96,.14),transparent 28%),radial-gradient(circle at 80% 0%,rgba(56,189,248,.08),transparent 24%)}
-    .card{background:rgba(18,18,42,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:20px;padding:28px;width:100%;max-width:1440px;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:22px}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#e94560,#c23152);display:grid;place-items:center;font-size:20px;box-shadow:0 0 24px rgba(233,69,96,.35)}.page-title{font-size:1.45rem;font-weight:750;color:#f8fafc}.page-sub{font-size:.82rem;color:#94a3b8;margin-top:3px}.section{padding:24px 0;border-top:1px solid rgba(255,255,255,.06)}.section:first-of-type{border-top:0;padding-top:0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.section-title{font-size:1rem;font-weight:700;color:#f8fafc}.section-note{font-size:.78rem;color:#64748b}
-    .dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}.metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;transition:border-color .2s,box-shadow .2s}.metric:hover{border-color:rgba(233,69,96,.3);box-shadow:0 0 30px rgba(233,69,96,.1)}.metric-label{font-size:.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em}.metric-value{font-size:1.65rem;font-weight:750;color:#f8fafc;margin-top:7px}.metric-foot{font-size:.72rem;color:#64748b;margin-top:4px}.panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px}
-    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.span-all{grid-column:1/-1}.table-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.025)} @media(max-width:900px){body{padding:12px}.card{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:560px){.topbar{align-items:flex-start;flex-direction:column}.dashboard-grid,.form-grid{grid-template-columns:1fr}.card{padding:14px}}
+    :root{
+      --bg:#0b0b18;--accent:#e94560;--accent-dark:#c23152;--accent-soft:rgba(233,69,96,.13);
+      --surface:rgba(255,255,255,.03);--surface-hover:rgba(255,255,255,.055);
+      --border:rgba(255,255,255,.08);--border-soft:rgba(255,255,255,.06);
+      --card:rgba(18,18,42,.72);--sidebar:rgba(9,9,22,.92);
+      --text:#f8fafc;--text-dim:#94a3b8;--text-mute:#64748b;
+      --success:#4ade80;--success-soft:rgba(52,211,153,.1);
+      --danger:#f87171;--danger-soft:rgba(233,69,96,.1);
+      --radius-lg:20px;--radius-md:14px;--radius-sm:10px;
+      --font:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;background-image:radial-gradient(circle at 8% 0%,var(--accent-soft),transparent 30%),radial-gradient(circle at 92% 8%,rgba(56,189,248,.09),transparent 26%);background-attachment:fixed}
+    a{color:inherit}
 
-    h1{font-size:1.4rem;font-weight:700;margin-bottom:.25rem;color:#f1f5f9}
-    .sub{color:#94a3b8;font-size:.85rem;margin-bottom:1.5rem}
-    label{display:block;font-size:.8rem;color:#94a3b8;margin-bottom:.35rem;font-weight:500}
-    input,select{width:100%;padding:.6rem .85rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:.9rem;outline:none;margin-bottom:1rem}
-    input:focus,select:focus{border-color:#e94560;box-shadow:0 0 12px rgba(233,69,96,.2)}
-    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.25rem;border-radius:8px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;transition:all .2s}
-    .btn-primary{background:linear-gradient(135deg,#e94560,#c23152);color:#fff;box-shadow:0 4px 18px rgba(233,69,96,.3)}.btn-primary:hover{opacity:.9;box-shadow:0 4px 24px rgba(233,69,96,.45)}
-    .btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{opacity:.85}
-    .btn-ghost{background:rgba(255,255,255,.04);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}.btn-ghost:hover{color:#e2e8f0;border-color:rgba(233,69,96,.3)}
-    .alert-err{background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.25);color:#fca5a5;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem}
-    .alert-ok{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#86efac;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem}
-    table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:1rem}
-    th{text-align:left;color:#64748b;font-weight:600;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.06);text-transform:uppercase;letter-spacing:.06em;font-size:.72rem}
-    td{padding:.6rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:#cbd5e1;vertical-align:top}
-    tr:hover td{background:rgba(233,69,96,.04)}
-    .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-size:.7rem;font-weight:600}
-    .badge-ok{background:rgba(52,211,153,.1);color:#4ade80;border:1px solid rgba(52,211,153,.25)}
-    .badge-used{background:rgba(255,255,255,.04);color:#78716c;border:1px solid rgba(255,255,255,.1)}
-    .badge-exp{background:rgba(233,69,96,.1);color:#f87171;border:1px solid rgba(233,69,96,.25)}
-    .stat{display:flex;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
-    .stat-box{flex:1;min-width:120px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.85rem 1rem;transition:border-color .2s,box-shadow .2s}.stat-box:hover{border-color:rgba(233,69,96,.3);box-shadow:0 0 20px rgba(233,69,96,.08)}
-    .stat-label{font-size:.7rem;color:#64748b;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em}
-    .stat-val{font-size:1.3rem;font-weight:700;color:#f1f5f9}
-    .sep{height:1px;background:rgba(255,255,255,.06);margin:1.5rem 0}
-    .link-box{background:rgba(233,69,96,.06);border:1px solid rgba(233,69,96,.18);border-radius:8px;padding:.6rem 1rem;font-size:.78rem;color:#e94560;word-break:break-all;margin-top:.5rem}
-    .mono{font-family:monospace}
-    /* WolfMod sidebar dashboard */
-    body{padding:0;background-color:#0f0f1e;background-image:radial-gradient(circle at top left,rgba(233,69,96,.14),transparent 28%),radial-gradient(circle at 80% 0%,rgba(56,189,248,.08),transparent 24%)}.admin-shell{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}.sidebar{background:rgba(12,12,28,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-right:1px solid rgba(255,255,255,.06);padding:28px 16px;position:sticky;top:0;height:100vh}.side-brand{font-size:1.25rem;font-weight:800;color:#f5f5f5;margin:0 10px 30px}.side-brand b{display:block;color:#e94560;font-size:.75rem;margin-top:4px;letter-spacing:.06em}.nav-item{display:block;padding:12px 14px;border-radius:10px;color:#aeb4c0;text-decoration:none;font-weight:650;margin:5px 0;transition:all .2s}.nav-item:hover{background:rgba(233,69,96,.06);color:#f8fafc}.nav-item.active{background:rgba(233,69,96,.12);color:#e94560;box-shadow:0 0 16px rgba(233,69,96,.1)}.nav-label{font-size:.72rem;color:#64748b;letter-spacing:.1em;margin:24px 14px 8px;text-transform:uppercase}.admin-main{padding:32px 48px;max-width:1600px;width:100%}.card{max-width:none;margin:0;background:rgba(18,18,42,.75);backdrop-filter:blur(16px);border-color:rgba(233,69,96,.12);box-shadow:0 20px 60px rgba(0,0,0,.4)}.topbar{border-color:rgba(255,255,255,.06)}.brand-mark{background:linear-gradient(135deg,#e94560,#c23152);box-shadow:0 0 24px rgba(233,69,96,.35)}.dashboard-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.metric,.panel,.table-wrap{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08)}.metric{border-radius:14px}.btn-primary{background:linear-gradient(135deg,#e94560,#c23152);box-shadow:0 4px 18px rgba(233,69,96,.3)}.btn-ghost{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}.section{border-color:rgba(255,255,255,.06)}@media(max-width:900px){.admin-shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;padding:18px}.nav-item{display:inline-block}.admin-main{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}}
+    /* ---------- Login ---------- */
+    body.login-body{padding:24px;display:flex;align-items:center;justify-content:center}
+    .login-card{background:var(--card);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(233,69,96,.16);border-radius:var(--radius-lg);padding:36px 34px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+    .login-mark{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:grid;place-items:center;color:#fff;box-shadow:0 0 28px rgba(233,69,96,.4);margin-bottom:18px}
+    .login-card h1{font-size:1.3rem;font-weight:800;margin-bottom:.3rem}
+    .login-card .sub{color:var(--text-dim);font-size:.85rem;margin-bottom:1.5rem}
+
+    /* ---------- Shared form / button / table primitives ---------- */
+    h1{font-size:1.4rem;font-weight:700;margin-bottom:.25rem;color:var(--text)}
+    label{display:block;font-size:.78rem;color:var(--text-dim);margin-bottom:.35rem;font-weight:600}
+    .hint{font-size:.7rem;color:var(--text-mute);margin-top:-.75rem;margin-bottom:1rem}
+    input,select{width:100%;padding:.65rem .85rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.88rem;outline:none;margin-bottom:1rem;transition:border-color .15s,box-shadow .15s;font-family:inherit}
+    input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,69,96,.15)}
+    input::placeholder{color:var(--text-mute)}
+
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.62rem 1.15rem;border-radius:9px;font-weight:650;font-size:.85rem;cursor:pointer;border:none;transition:all .15s;font-family:inherit;white-space:nowrap}
+    .btn svg{flex:none}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;box-shadow:0 4px 18px rgba(233,69,96,.3)}
+    .btn-primary:hover{filter:brightness(1.08);box-shadow:0 6px 26px rgba(233,69,96,.45)}
+    .btn-danger{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.25)}
+    .btn-danger:hover{background:rgba(239,68,68,.85);color:#fff}
+    .btn-ghost{background:var(--surface);color:var(--text-dim);border:1px solid var(--border)}
+    .btn-ghost:hover{color:var(--text);border-color:rgba(233,69,96,.35);background:var(--surface-hover)}
+    .btn-sm{padding:.4rem .75rem;font-size:.74rem;border-radius:7px}
+    .btn-icon{padding:.4rem;border-radius:7px}
+    .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+    .alert{display:flex;align-items:center;gap:.6rem;border-radius:10px;padding:.7rem 1rem;margin-bottom:.85rem;font-size:.84rem}
+    .alert svg{flex:none}
+    .alert-err{background:var(--danger-soft);border:1px solid rgba(233,69,96,.25);color:#fca5a5}
+    .alert-ok{background:var(--success-soft);border:1px solid rgba(52,211,153,.22);color:#86efac}
+
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    thead th{position:sticky;top:0;background:rgba(15,15,30,.9);backdrop-filter:blur(6px)}
+    th{text-align:left;color:var(--text-mute);font-weight:700;padding:.65rem .85rem;border-bottom:1px solid var(--border-soft);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem}
+    td{padding:.7rem .85rem;border-bottom:1px solid var(--border-soft);color:#cbd5e1;vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:rgba(233,69,96,.045)}
+    .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);max-height:520px;overflow-y:auto}
+
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:.2rem .6rem .2rem .5rem;border-radius:99px;font-size:.68rem;font-weight:700;letter-spacing:.02em}
+    .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+    .badge-ok{background:var(--success-soft);color:#4ade80;border:1px solid rgba(52,211,153,.25)}
+    .badge-used{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid var(--border)}
+    .badge-exp{background:var(--danger-soft);color:#f87171;border:1px solid rgba(233,69,96,.25)}
+
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .link-row{display:flex;align-items:center;gap:6px}
+    .link-box{flex:1;background:rgba(233,69,96,.07);border:1px solid rgba(233,69,96,.18);border-radius:8px;padding:.5rem .75rem;font-size:.74rem;color:#f0a1ae;word-break:break-all}
+    .copy-btn{flex:none;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text-dim);border-radius:7px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;transition:all .15s}
+    .copy-btn:hover{color:var(--text);border-color:rgba(233,69,96,.35)}
+    .copy-btn.copied{color:#4ade80;border-color:rgba(52,211,153,.35)}
+
+    .avatar{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(233,69,96,.35),rgba(194,49,82,.35));display:grid;place-items:center;font-weight:800;font-size:.85rem;color:#fca5b5;flex:none;border:1px solid rgba(233,69,96,.25)}
+    .name-cell{display:flex;align-items:center;gap:11px}
+    .empty-row td{color:var(--text-mute);text-align:center;padding:2.2rem 1rem}
+    .empty-row .empty-icon{opacity:.5;margin-bottom:8px}
+
+    .sep{height:1px;background:var(--border-soft);margin:1.75rem 0}
+
+    /* ---------- App shell ---------- */
+    .admin-shell{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+    .sidebar{background:var(--sidebar);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-right:1px solid var(--border-soft);padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+    .side-brand{display:flex;align-items:center;gap:12px;margin:2px 8px 30px}
+    .side-brand .mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:grid;place-items:center;color:#fff;box-shadow:0 0 20px rgba(233,69,96,.4);flex:none}
+    .side-brand .name{font-size:1.02rem;font-weight:800;color:var(--text);line-height:1.15}
+    .side-brand .tag{font-size:.62rem;color:var(--accent);letter-spacing:.09em;font-weight:800;margin-top:1px}
+    .nav-label{font-size:.65rem;color:var(--text-mute);letter-spacing:.11em;text-transform:uppercase;margin:22px 12px 8px;font-weight:700}
+    .nav-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;color:var(--text-dim);text-decoration:none;font-weight:650;font-size:.85rem;margin:2px 0;transition:background .15s,color .15s}
+    .nav-item svg{opacity:.8;flex:none}
+    .nav-item:hover{background:var(--surface-hover);color:var(--text)}
+    .nav-item.active{background:var(--accent-soft);color:var(--accent)}
+    .nav-item.active svg{opacity:1}
+    .sidebar-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--border-soft);font-size:.68rem;color:var(--text-mute)}
+
+    .admin-main{padding:34px 42px;max-width:1520px;width:100%}
+    .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+    .page-title{font-size:1.5rem;font-weight:800;color:var(--text)}
+    .page-sub{font-size:.83rem;color:var(--text-dim);margin-top:4px}
+    .topbar-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+
+    .dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+    .metric{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px;transition:transform .15s,border-color .15s,box-shadow .15s}
+    .metric:hover{transform:translateY(-2px);border-color:rgba(233,69,96,.32);box-shadow:0 14px 34px rgba(233,69,96,.12)}
+    .metric-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;margin-bottom:14px;background:rgba(255,255,255,.06);color:var(--text-dim)}
+    .metric-icon.accent{background:var(--accent-soft);color:var(--accent)}
+    .metric-icon.ok{background:var(--success-soft);color:#4ade80}
+    .metric-label{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+    .metric-value{font-size:1.85rem;font-weight:800;color:var(--text);margin-top:6px;line-height:1}
+    .metric-foot{font-size:.72rem;color:var(--text-mute);margin-top:7px}
+
+    .quick-actions{display:flex;gap:.7rem;margin-bottom:24px;flex-wrap:wrap}
+
+    .section{padding:26px 0;border-top:1px solid var(--border-soft);scroll-margin-top:20px}
+    .section:first-of-type{border-top:0;padding-top:0}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .section-head-left{display:flex;align-items:center;gap:10px}
+    .section-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+    .section-title{font-size:1.02rem;font-weight:750;color:var(--text)}
+    .section-note{font-size:.76rem;color:var(--text-mute);margin-top:1px}
+
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px}
+    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+    .span-all{grid-column:1/-1}
+    details > summary{cursor:pointer;list-style:none}
+    details > summary::-webkit-details-marker{display:none}
+    .summary-row{display:flex;align-items:center;gap:8px;color:#a5adf7;font-size:.83rem;font-weight:650;padding:.4rem 0}
+
+    .card{max-width:none;margin:0;background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.4);padding:0}
+
+    @media(max-width:980px){
+      .admin-shell{grid-template-columns:1fr}
+      .sidebar{position:static;height:auto;padding:16px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px}
+      .side-brand{margin:0 10px 0 0}
+      .nav-label{display:none}
+      .nav-item{padding:8px 11px}
+      .sidebar-foot{display:none}
+      .admin-main{padding:20px}
+      .dashboard-grid{grid-template-columns:repeat(2,1fr)}
+      .form-grid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:560px){
+      .topbar{flex-direction:column;align-items:stretch}
+      .dashboard-grid,.form-grid{grid-template-columns:1fr}
+      .admin-main{padding:14px}
+    }
   `;
 }
 
-function layout(title: string, body: string) {
+function layout(title: string, body: string, opts: { loginPage?: boolean; withScript?: boolean } = {}) {
+  const script = opts.withScript ? `
+  <script>
+    function wmCopy(btn, text){
+      navigator.clipboard.writeText(text).then(function(){
+        var old = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = '${icon("check", 14)}';
+        setTimeout(function(){ btn.innerHTML = old; btn.classList.remove('copied'); }, 1400);
+      });
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      var sections = document.querySelectorAll('main section[id], main div[id="dashboard-top"]');
+      var navItems = document.querySelectorAll('.nav-item[data-section]');
+      if (sections.length && navItems.length && 'IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              navItems.forEach(function (n) { n.classList.remove('active'); });
+              var active = document.querySelector('.nav-item[data-section="' + e.target.id + '"]');
+              if (active) active.classList.add('active');
+            }
+          });
+        }, { rootMargin: '-35% 0px -55% 0px' });
+        sections.forEach(function (s) { obs.observe(s); });
+      }
+    });
+  </script>` : "";
   return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${title} — WolfMod Admin</title>
   <style>${css()}</style>
-</head><body>${body}</body></html>`;
+</head><body class="${opts.loginPage ? "login-body" : ""}">${body}${script}</body></html>`;
 }
 
 function fmtDate(ts: number) {
@@ -79,6 +241,11 @@ function tokenStatus(t: { usedAt: number | null; expiresAt: number }) {
   return `<span class="badge badge-ok">Con hieu luc</span>`;
 }
 
+function initialOf(name: string) {
+  const trimmed = name.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+}
+
 // ═══════════════════════════════════════════════════════
 // GET /admin/login
 // ═══════════════════════════════════════════════════════
@@ -87,18 +254,19 @@ router.get("/admin/login", (req: Request, res: Response) => {
   const ok = req.query["logout"] ? "Da dang xuat." : "";
   res.setHeader("Content-Type", "text/html;charset=utf-8");
   res.send(layout("Dang nhap Admin", `
-    <div class="card">
-      <h1>🛡 Admin Login</h1>
+    <div class="login-card">
+      <div class="login-mark">${icon("shield", 24)}</div>
+      <h1>Admin Login</h1>
       <p class="sub">Nhap Admin Token de truy cap trang quan tri bot.</p>
-      ${err ? `<div class="alert-err">${err}</div>` : ""}
-      ${ok ? `<div class="alert-ok">${ok}</div>` : ""}
+      ${err ? `<div class="alert alert-err">${icon("alert")}<span>${err}</span></div>` : ""}
+      ${ok ? `<div class="alert alert-ok">${icon("check")}<span>${ok}</span></div>` : ""}
       <form method="POST" action="/admin/login">
         <label>Admin Token</label>
         <input type="password" name="token" placeholder="Nhap token..." autofocus autocomplete="current-password" />
-        <button type="submit" class="btn btn-primary" style="width:100%">Dang nhap</button>
+        <button type="submit" class="btn btn-primary" style="width:100%">${icon("unlock")} Dang nhap</button>
       </form>
     </div>
-  `));
+  `, { loginPage: true }));
 });
 
 // ═══════════════════════════════════════════════════════
@@ -133,9 +301,6 @@ router.post("/admin/logout", (req: Request, res: Response) => {
 // ═══════════════════════════════════════════════════════
 // GET /admin  — dashboard
 // ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// GET /admin  — dashboard
-// ═══════════════════════════════════════════════════════
 router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const tokens = listUserTokens();
   const accounts = listAiAccounts();
@@ -150,106 +315,169 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const accCreated = req.query["accCreated"] as string | undefined;
   const accDeleted = req.query["accDeleted"] as string | undefined;
   const baseOrigin = `${req.protocol}://${req.get("host")}`;
+  const botOn = botState.status === "running";
 
   const accRows = accounts.length === 0
-    ? `<tr><td colspan="4" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co tai khoan AI nao. Them o form duoi.</td></tr>`
+    ? `<tr class="empty-row"><td colspan="4"><div class="empty-icon">${icon("cpu", 22)}</div>Chua co tai khoan AI nao. Them o form duoi.</td></tr>`
     : accounts.map(a => `
         <tr>
-          <td><div style="font-weight:600;color:#e2e8f0">${a.name}</div></td>
-          <td class="mono" style="font-size:.75rem;color:#818cf8;max-width:200px;word-break:break-all">${a.baseUrl}</td>
+          <td><div style="font-weight:650;color:#e2e8f0">${a.name}</div></td>
+          <td class="mono" style="font-size:.75rem;color:#818cf8;max-width:220px;word-break:break-all">${a.baseUrl}</td>
           <td class="mono" style="font-size:.75rem;color:#64748b">${a.model}</td>
-          <td><form method="POST" action="/admin/accounts/delete" style="display:inline"><input type="hidden" name="id" value="${a.id}" /><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td>
+          <td><form method="POST" action="/admin/accounts/delete" style="display:inline"><input type="hidden" name="id" value="${a.id}" /><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xoa</button></form></td>
         </tr>`).join("");
 
   const accMap = new Map(accounts.map(a => [a.id, a]));
   const tokenRows = tokens.length === 0
-    ? `<tr><td colspan="7" style="color:#4b5563;text-align:center;padding:1.5rem">Chua co link nao.</td></tr>`
+    ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("link", 22)}</div>Chua co link nao.</td></tr>`
     : tokens.map(t => {
         const geminiLink = `${baseOrigin}/connect/gemini?userToken=${t.id}`;
         const ttlLeft = Math.max(0, Math.round((t.expiresAt - Date.now()) / 60000));
         const accName = t.aiAccountId ? (accMap.get(t.aiAccountId)?.name ?? `<span style="color:#f87171">?</span>`) : `<span style="color:#64748b">Gemini OAuth</span>`;
         return `<tr>
-          <td><div style="font-weight:600;color:#e2e8f0">${t.label}</div><div style="font-size:.7rem;color:#4b5563">${fmtDate(t.createdAt)}</div><div style="font-size:.7rem;color:#818cf8">Thread: ${t.fbThreadId || "-"}</div></td>
+          <td><div style="font-weight:650;color:#e2e8f0">${t.label}</div><div style="font-size:.7rem;color:#4b5563;margin-top:2px">${fmtDate(t.createdAt)}</div><div style="font-size:.7rem;color:#818cf8">Thread: ${t.fbThreadId || "-"}</div></td>
           <td>${tokenStatus(t)}</td>
           <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Het han" : `Con ${ttlLeft} phut`)}</td>
           <td style="color:#94a3b8;font-size:.8rem">${accName}</td>
           <td style="color:#e2e8f0;max-width:140px;word-break:break-all">${t.usedByLabel ? `<span style="color:#4ade80">${t.usedByLabel}</span>` : `<span style="color:#4b5563">-</span>`}</td>
-          <td class="mono" style="max-width:260px"><div class="link-box">${geminiLink}</div></td>
-          <td><form method="POST" action="/admin/links/delete" style="display:inline"><input type="hidden" name="id" value="${t.id}" /><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td>
+          <td class="mono" style="max-width:270px"><div class="link-row"><div class="link-box">${geminiLink}</div><button type="button" class="copy-btn" title="Sao chep link" onclick="wmCopy(this,'${geminiLink}')">${icon("copy", 14)}</button></div></td>
+          <td><form method="POST" action="/admin/links/delete" style="display:inline"><input type="hidden" name="id" value="${t.id}" /><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xoa</button></form></td>
         </tr>`;
       }).join("");
 
-  const serviceUserRows = serviceUsers.length === 0 ? `<tr><td colspan="7" style="color:#4b5563;text-align:center;padding:2rem">Chua co khach hang nao. Tao khach hang dau tien o form ben duoi.</td></tr>` : serviceUsers.map(u => `<tr><td><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.72rem;color:#818cf8;margin-top:3px">ID: ${u.id}</div></td><td class="mono" style="font-size:.76rem">${u.fbThreadId}</td><td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td><td>${u.active ? `<span class="badge badge-ok">Hoat dong</span>` : `<span class="badge badge-exp">Da khoa</span>`}</td><td>${connectedThreads.has(u.fbThreadId) ? `<span class="badge badge-ok">Da ket noi</span>` : `<span class="badge badge-used">Chua ket noi</span>`}</td><td><a href="${baseOrigin}/u/${u.id}" target="_blank" rel="noreferrer" class="mono" style="font-size:.75rem;color:#818cf8">/u/${u.id} ↗</a></td><td style="white-space:nowrap"><form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost" style="padding:.35rem .7rem;font-size:.75rem">${u.active ? "Khoa" : "Mo"}</button></form> <form method="POST" action="/admin/users/delete" style="display:inline"><input type="hidden" name="id" value="${u.id}"><button class="btn btn-danger" style="padding:.35rem .7rem;font-size:.75rem">Xoa</button></form></td></tr>`).join("");
+  const serviceUserRows = serviceUsers.length === 0
+    ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("users", 22)}</div>Chua co khach hang nao. Tao khach hang dau tien o form ben duoi.</td></tr>`
+    : serviceUsers.map(u => {
+        const userUrl = `${baseOrigin}/u/${u.id}`;
+        return `<tr>
+          <td><div class="name-cell"><div class="avatar">${initialOf(u.name)}</div><div><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.7rem;color:#818cf8;margin-top:2px">ID: ${u.id}</div></div></div></td>
+          <td class="mono" style="font-size:.76rem">${u.fbThreadId}</td>
+          <td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td>
+          <td>${u.active ? `<span class="badge badge-ok">Hoat dong</span>` : `<span class="badge badge-exp">Da khoa</span>`}</td>
+          <td>${connectedThreads.has(u.fbThreadId) ? `<span class="badge badge-ok">Da ket noi</span>` : `<span class="badge badge-used">Chua ket noi</span>`}</td>
+          <td><div class="link-row" style="max-width:190px"><a href="${userUrl}" target="_blank" rel="noreferrer" class="mono" style="font-size:.74rem;color:#818cf8;display:inline-flex;align-items:center;gap:5px">/u/${u.id} ${icon("external", 12)}</a></div></td>
+          <td style="white-space:nowrap">
+            <form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost btn-sm" title="${u.active ? "Khoa" : "Mo khoa"}">${u.active ? icon("lock", 13) : icon("unlock", 13)} ${u.active ? "Khoa" : "Mo"}</button></form>
+            <form method="POST" action="/admin/users/delete" style="display:inline;margin-left:6px"><input type="hidden" name="id" value="${u.id}"><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xoa</button></form>
+          </td>
+        </tr>`;
+      }).join("");
 
   const accOptions = accounts.length === 0
     ? `<option value="">- Chua co tai khoan AI -</option>`
     : accounts.map(a => `<option value="${a.id}">${a.name} (${a.model})</option>`).join("");
 
   const alerts = [
-    geminiOk ? `<div class="alert-ok">&#x2713; Da ket noi Gemini thanh cong!</div>` : "",
-    geminiErr ? `<div class="alert-err">&#x26A0; Loi ket noi Gemini: ${decodeURIComponent(geminiErr)}</div>` : "",
-    created ? `<div class="alert-ok">Da tao link.</div>` : "",
-    deleted ? `<div class="alert-err">Da xoa link.</div>` : "",
-    accCreated ? `<div class="alert-ok">Da them tai khoan AI.</div>` : "",
-    accDeleted ? `<div class="alert-err">Da xoa tai khoan AI.</div>` : "",
+    geminiOk ? `<div class="alert alert-ok">${icon("check")}<span>Da ket noi Gemini thanh cong!</span></div>` : "",
+    geminiErr ? `<div class="alert alert-err">${icon("alert")}<span>Loi ket noi Gemini: ${decodeURIComponent(geminiErr)}</span></div>` : "",
+    created ? `<div class="alert alert-ok">${icon("check")}<span>Da tao link.</span></div>` : "",
+    deleted ? `<div class="alert alert-err">${icon("alert")}<span>Da xoa link.</span></div>` : "",
+    accCreated ? `<div class="alert alert-ok">${icon("check")}<span>Da them tai khoan AI.</span></div>` : "",
+    accDeleted ? `<div class="alert alert-err">${icon("alert")}<span>Da xoa tai khoan AI.</span></div>` : "",
   ].join("");
 
   res.setHeader("Content-Type", "text/html;charset=utf-8");
   res.send(layout("Admin Dashboard", `
-    <div class="admin-shell"><aside class="sidebar"><div class="side-brand">WolfMod<b>ADMIN PANEL</b></div><a class="nav-item active" href="/admin">◆ Dashboard</a><a class="nav-item" href="#customers">♙ Khach hang</a><a class="nav-item" href="#links">↗ Gemini links</a><a class="nav-item" href="#accounts">◇ AI Accounts</a><div class="nav-label">SYSTEM</div><a class="nav-item" href="/">⌂ Landing page</a></aside><main class="admin-main"><div class="card">
-      <header class="topbar">
-        <div class="brand"><div class="brand-mark">◆</div><div><div class="page-title">WolfMod Admin</div><div class="page-sub">Quan ly khach hang, ket noi Gemini va Facebook Bot</div></div></div>
-        <form method="POST" action="/admin/logout"><button class="btn btn-ghost">Dang xuat</button></form>
-      </header>
-      <div class="dashboard-grid">
-        <div class="metric"><div class="metric-label">Tong khach hang</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con da cap phep</div></div>
-        <div class="metric"><div class="metric-label">Dang hoat dong</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tai khoan dang khoa</div></div>
-        <div class="metric"><div class="metric-label">Da ket noi Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
-        <div class="metric"><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.1rem;padding-top:7px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhan da xu ly</div></div>
-      </div>
-      <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-        <a href="/connect/gemini" class="btn btn-primary">&#x1F1EC;&#x1F1F4; Ket noi Gemini (Admin)</a>
-        <a href="/" class="btn btn-ghost">Landing page</a>
-      </div>
-      ${alerts}
-      <section id="customers" class="section">
-        <div class="section-head"><div><div class="section-title">Khach hang dich vu</div><div class="section-note">Moi khach hang co URL, mat khau, FB Thread va Gemini rieng.</div></div><span class="badge badge-ok">${activeUsers} dang hoat dong</span></div>
-        <div class="panel" style="margin-bottom:16px"><form method="POST" action="/admin/users/create" class="form-grid">
-          <div><label>Ten khach hang</label><input name="name" required maxlength="80" placeholder="Cong ty ABC"></div>
-          <div><label>ID link con</label><input name="id" required pattern="[a-z0-9-]{3,48}" placeholder="cong-ty-abc"></div>
-          <div><label>Mat khau</label><input name="password" type="password" required minlength="8" placeholder="Toi thieu 8 ky tu"></div>
-          <div><label>FB Thread ID</label><input name="fbThreadId" required placeholder="1234567890"></div>
-          <div class="span-all"><button class="btn btn-primary">+ Tao khach hang va link con</button></div>
-        </form></div>
-        <div class="table-wrap"><table><thead><tr><th>Khach hang</th><th>FB Thread ID</th><th>Ngay dang ky</th><th>Trang thai</th><th>Gemini</th><th>Trang con</th><th>Thao tac</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
-      </section>
-      <div class="sep"></div>
-      <h2 id="accounts" style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tai khoan AI (${accounts.length})</h2>
-      <div style="overflow-x:auto"><table><thead><tr><th>Ten</th><th>Base URL</th><th>Model</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>
-      <details style="margin-top:1rem">
-        <summary style="cursor:pointer;color:#6366f1;font-size:.85rem;font-weight:600;padding:.5rem 0">+ Them tai khoan AI moi</summary>
-        <form method="POST" action="/admin/accounts/create" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end;margin-top:.75rem">
-          <div><label>Ten hien thi</label><input name="name" placeholder="9Router Production" required /></div>
-          <div><label>Base URL</label><input name="baseUrl" placeholder="https://api.9router.dev/v1" required /></div>
-          <div><label>API Key</label><input name="apiKey" type="password" placeholder="sk-..." required /></div>
-          <div><label>Model</label><input name="model" placeholder="cc/claude-opus-4-5" required /></div>
-          <div style="grid-column:1/-1"><button class="btn btn-primary" style="width:100%">Them tai khoan AI</button></div>
-        </form>
-      </details>
-      <div class="sep"></div>
-      <h2 id="links" style="font-size:1rem;margin-bottom:1rem;color:#f1f5f9">Tao link ket noi Gemini cho nguoi dung</h2>
-      <form method="POST" action="/admin/links/create" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end">
-        <div><label>Nhan (ten nguoi dung)</label><input name="label" placeholder="Khach hang A" required /></div>
-        <div><label>FB Thread ID (ID cuoc tro chuyen)</label><input name="fbThreadId" placeholder="1234567890" required title="Lay tu URL facebook.com/messages/t/[ID]" /></div>
-        <div><label>Tai khoan AI (tuy chon)</label><select name="aiAccountId"><option value="">- Khong chon (dung Gemini OAuth) -</option>${accOptions}</select></div>
-        <div><label>Hieu luc</label><select name="ttlHours"><option value="1">1 gio</option><option value="6">6 gio</option><option value="24" selected>24 gio</option><option value="72">3 ngay</option><option value="168">7 ngay</option></select></div>
-        <div style="grid-column:1/-1"><button class="btn btn-primary" style="width:100%">Tao link Gemini</button></div>
-      </form>
-      <div class="sep"></div>
-      <h2 style="font-size:1rem;margin-bottom:.5rem;color:#f1f5f9">Danh sach link (${tokens.length})</h2>
-      <div style="overflow-x:auto"><table><thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han</th><th>Tai khoan AI</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead><tbody>${tokenRows}</tbody></table></div>
-    </div></main></div>
-  `));
+    <div class="admin-shell">
+      <aside class="sidebar">
+        <div class="side-brand"><div class="mark">${icon("shield", 19)}</div><div><div class="name">WolfMod</div><div class="tag">ADMIN PANEL</div></div></div>
+        <a class="nav-item active" data-section="dashboard-top" href="/admin#dashboard-top">${icon("grid")} Dashboard</a>
+        <a class="nav-item" data-section="customers" href="#customers">${icon("users")} Khach hang</a>
+        <a class="nav-item" data-section="links" href="#links">${icon("link")} Gemini links</a>
+        <a class="nav-item" data-section="accounts" href="#accounts">${icon("cpu")} AI Accounts</a>
+        <div class="nav-label">System</div>
+        <a class="nav-item" href="/">${icon("home")} Landing page</a>
+        <div class="sidebar-foot">Bot: <b style="color:${botOn ? "#4ade80" : "#f87171"}">${botState.status}</b></div>
+      </aside>
+      <main class="admin-main">
+        <div class="card">
+          <div style="padding:28px 28px 0">
+            <header class="topbar">
+              <div><div class="page-title">WolfMod Admin</div><div class="page-sub">Quan ly khach hang, ket noi Gemini va Facebook Bot</div></div>
+              <div class="topbar-actions">
+                <span class="badge ${botOn ? "badge-ok" : "badge-exp"}">${botOn ? "Bot dang chay" : "Bot: " + botState.status}</span>
+                <form method="POST" action="/admin/logout"><button class="btn btn-ghost">${icon("logout")} Dang xuat</button></form>
+              </div>
+            </header>
+
+            <div id="dashboard-top" class="dashboard-grid">
+              <div class="metric"><div class="metric-icon accent">${icon("users", 16)}</div><div class="metric-label">Tong khach hang</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con da cap phep</div></div>
+              <div class="metric"><div class="metric-icon ok">${icon("bolt", 16)}</div><div class="metric-label">Dang hoat dong</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tai khoan dang khoa</div></div>
+              <div class="metric"><div class="metric-icon accent">${icon("link", 16)}</div><div class="metric-label">Da ket noi Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
+              <div class="metric"><div class="metric-icon ${botOn ? "ok" : ""}">${icon("cpu", 16)}</div><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.15rem;padding-top:6px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhan da xu ly</div></div>
+            </div>
+
+            <div class="quick-actions">
+              <a href="/connect/gemini" class="btn btn-primary">${icon("link")} Ket noi Gemini (Admin)</a>
+              <a href="/" class="btn btn-ghost">${icon("home")} Landing page</a>
+            </div>
+
+            ${alerts}
+          </div>
+
+          <div style="padding:0 28px 28px">
+            <section id="customers" class="section">
+              <div class="section-head">
+                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khach hang dich vu</div><div class="section-note">Moi khach hang co URL, mat khau, FB Thread va Gemini rieng.</div></div></div>
+                <span class="badge badge-ok">${activeUsers} dang hoat dong</span>
+              </div>
+              <div class="panel" style="margin-bottom:16px">
+                <form method="POST" action="/admin/users/create" class="form-grid">
+                  <div><label>Ten khach hang</label><input name="name" required maxlength="80" placeholder="Cong ty ABC"></div>
+                  <div><label>ID link con</label><input name="id" required pattern="[a-z0-9-]{3,48}" placeholder="cong-ty-abc"></div>
+                  <div><label>Mat khau</label><input name="password" type="password" required minlength="8" placeholder="Toi thieu 8 ky tu"></div>
+                  <div><label>FB Thread ID</label><input name="fbThreadId" required placeholder="1234567890"></div>
+                  <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tao khach hang va link con</button></div>
+                </form>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Khach hang</th><th>FB Thread ID</th><th>Ngay dang ky</th><th>Trang thai</th><th>Gemini</th><th>Trang con</th><th>Thao tac</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
+            </section>
+
+            <section id="accounts" class="section">
+              <div class="section-head">
+                <div class="section-head-left"><div class="section-icon">${icon("cpu", 15)}</div><div><div class="section-title">Tai khoan AI</div><div class="section-note">Cac provider dung de tra loi tin nhan (Claude, Gemini, 9Router, OpenRouter...).</div></div></div>
+                <span class="badge badge-used">${accounts.length} tai khoan</span>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Ten</th><th>Base URL</th><th>Model</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>
+              <details style="margin-top:14px">
+                <summary><div class="summary-row">${icon("plus", 14)} Them tai khoan AI moi</div></summary>
+                <div class="panel" style="margin-top:10px">
+                  <form method="POST" action="/admin/accounts/create" class="form-grid" style="grid-template-columns:1fr 1fr">
+                    <div><label>Ten hien thi</label><input name="name" placeholder="9Router Production" required /></div>
+                    <div><label>Base URL</label><input name="baseUrl" placeholder="https://api.9router.dev/v1" required /></div>
+                    <div><label>API Key</label><input name="apiKey" type="password" placeholder="sk-..." required /></div>
+                    <div><label>Model</label><input name="model" placeholder="cc/claude-opus-4-5" required /></div>
+                    <div class="span-all"><button class="btn btn-primary" style="width:100%">${icon("plus")} Them tai khoan AI</button></div>
+                  </form>
+                </div>
+              </details>
+            </section>
+
+            <section id="links" class="section">
+              <div class="section-head">
+                <div class="section-head-left"><div class="section-icon">${icon("link", 15)}</div><div><div class="section-title">Link ket noi Gemini</div><div class="section-note">Tao link OAuth de nguoi dung tu chon model Gemini rieng.</div></div></div>
+                <span class="badge badge-used">${tokens.length} link</span>
+              </div>
+              <div class="panel" style="margin-bottom:16px">
+                <form method="POST" action="/admin/links/create" class="form-grid" style="grid-template-columns:1fr 1fr">
+                  <div><label>Nhan (ten nguoi dung)</label><input name="label" placeholder="Khach hang A" required /></div>
+                  <div>
+                    <label>FB Thread ID (ID cuoc tro chuyen)</label>
+                    <input name="fbThreadId" placeholder="1234567890" required title="Lay tu URL facebook.com/messages/t/[ID]" />
+                    <div class="hint">Lay tu URL facebook.com/messages/t/[ID]</div>
+                  </div>
+                  <div><label>Tai khoan AI (tuy chon)</label><select name="aiAccountId"><option value="">- Khong chon (dung Gemini OAuth) -</option>${accOptions}</select></div>
+                  <div><label>Hieu luc</label><select name="ttlHours"><option value="1">1 gio</option><option value="6">6 gio</option><option value="24" selected>24 gio</option><option value="72">3 ngay</option><option value="168">7 ngay</option></select></div>
+                  <div class="span-all"><button class="btn btn-primary" style="width:100%">${icon("plus")} Tao link Gemini</button></div>
+                </form>
+              </div>
+              <div class="table-wrap"><table><thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han</th><th>Tai khoan AI</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead><tbody>${tokenRows}</tbody></table></div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  `, { withScript: true }));
 });
 
 router.post("/admin/users/create", requireAdmin, (req: Request, res: Response) => {
