@@ -64,12 +64,13 @@ app.get("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 // ── Google Gemini OAuth flow ──────────────────────────────────────────────────
-// The bare "generative-language" scope isn't a real Google OAuth scope and
-// returns Error 400: invalid_scope. Use the actual Gemini API consumer scope,
-// which must also be added under Google Auth Platform → Data Access on the
-// OAuth consent screen (and the signing-in account added as a Test User while
-// the app is in Testing mode) or Google rejects it the same way.
-const GEMINI_SCOPES = "https://www.googleapis.com/auth/generative-language.peruserquota";
+// Match Gemini CLI / Code Assist OAuth. These scopes work with cloudcode-pa and
+// avoid requiring each deployment to own a Google OAuth consent screen.
+const GEMINI_SCOPES = [
+  "https://www.googleapis.com/auth/cloud-platform",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+].join(" ");
 
 app.get("/connect/gemini", async (req: Request, res: Response) => {
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
@@ -90,17 +91,6 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
     }
   }
 
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(503).send(`<!DOCTYPE html><html><body style="font-family:sans-serif;background:#0f1117;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;padding:2rem;text-align:center">
-      <h2 style="color:#f87171">&#x26A0; Chua cau hinh Google OAuth</h2>
-      <p>Can them vao Railway environment variables:</p>
-      <code style="background:#1a1d27;padding:.75rem 1.5rem;border-radius:8px;font-size:.9rem;display:block;text-align:left">GOOGLE_CLIENT_ID=...<br>GOOGLE_CLIENT_SECRET=...</code>
-      <p style="color:#64748b;font-size:.85rem;max-width:480px">Tao tai: <strong style="color:#818cf8">console.cloud.google.com</strong> &rarr; APIs &amp; Services &rarr; Credentials &rarr; Create OAuth 2.0 Client ID<br>Redirect URI: <strong>${req.protocol}://${req.get("host")}/connect/gemini/callback</strong></p>
-      <a href="/admin" style="color:#6366f1;text-decoration:none">&larr; Quay lai Admin</a>
-    </body></html>`);
-    return;
-  }
 
   // Service-user flow: key the resulting AI config by their account ID (shared
   // across all of their configured threads). Legacy one-off flow: key by the

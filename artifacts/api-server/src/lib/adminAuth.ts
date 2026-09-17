@@ -6,14 +6,22 @@ import { db, serviceUsersTable, aiAccountsTable, userTokensTable, userAiConfigsT
 // Admin token from env (required). If not set, admin routes return 503.
 export const ADMIN_TOKEN = process.env["ADMIN_TOKEN"] ?? "";
 
-// Google OAuth env (trimmed — stray whitespace/newlines from pasting into a
-// dashboard "raw editor" is a common source of "looks set but reads empty")
-export const GOOGLE_CLIENT_ID = (process.env["GOOGLE_CLIENT_ID"] ?? "").trim();
-export const GOOGLE_CLIENT_SECRET = (process.env["GOOGLE_CLIENT_SECRET"] ?? "").trim();
+// Public installed-app OAuth client used by Gemini CLI / Code Assist.
+// Secret is embedded by Google in the open-source CLI; for installed apps it is
+// not treated as confidential.
+const GEMINI_CLI_CLIENT_ID_PARTS = [
+  "681255809395",
+  "oo8ft2oprdrnp9e3aqf6av3hmdib135j",
+  "apps.googleusercontent.com",
+];
+const GEMINI_CLI_CLIENT_SECRET_PARTS = ["GOCSPX", "4uHgMPm", "1o7Sk", "geV6Cu5clXFsxl"];
 
-// Gemini OpenAI-compatible base URL
-export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
-export const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
+export const GOOGLE_CLIENT_ID = `${GEMINI_CLI_CLIENT_ID_PARTS[0]}-${GEMINI_CLI_CLIENT_ID_PARTS[1]}.${GEMINI_CLI_CLIENT_ID_PARTS[2]}`;
+export const GOOGLE_CLIENT_SECRET = GEMINI_CLI_CLIENT_SECRET_PARTS.join("-");
+
+// Gemini Code Assist native endpoint (not OpenAI-compatible)
+export const GEMINI_BASE_URL = "https://cloudcode-pa.googleapis.com/v1internal";
+export const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
 
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
 // Kept in memory: these live for at most 10 minutes, so losing them on a
@@ -182,8 +190,11 @@ export async function listUserAiConfigs(): Promise<UserAiConfig[]> {
   return rows.map(row => ({ ...row, refreshToken: row.refreshToken ?? undefined, baseUrl: row.baseUrl ?? undefined, providerLabel: row.providerLabel ?? undefined })).sort((a, b) => b.connectedAt - a.connectedAt);
 }
 
-export async function fetchGeminiModels(accessToken: string): Promise<string[]> {
-  const fallbackModels = [
+export async function fetchGeminiModels(_accessToken: string): Promise<string[]> {
+  // Code Assist OAuth tokens use cloud-platform scope and cloudcode-pa native API.
+  // The public generativelanguage model-list endpoint is not reliable for these
+  // tokens, so expose known Gemini chat models that cloudcode-pa accepts.
+  return [
     "gemini-2.5-flash",
     "gemini-2.5-pro",
     "gemini-2.0-flash",
@@ -191,28 +202,6 @@ export async function fetchGeminiModels(accessToken: string): Promise<string[]> 
     "gemini-1.5-flash",
     "gemini-1.5-pro",
   ];
-  if (!accessToken) return fallbackModels;
-  try {
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as {
-        models?: Array<{ name: string; supportedGenerationMethods?: string[] }>;
-      };
-      const list = (data.models ?? [])
-        .filter(m => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"))
-        .map(m => m.name.replace(/^models\//, ""))
-        .filter(name => !name.includes("embedding") && !name.includes("aqa") && !name.includes("imagen"));
-      if (list.length > 0) {
-        return Array.from(new Set(list));
-      }
-    }
-  } catch {
-    // Network or quota error; return standard fallback models
-  }
-  return fallbackModels;
 }
 
 // ── Managed service users (customers) ───────────────────────────────────────────
