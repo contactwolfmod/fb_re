@@ -723,6 +723,18 @@ export class FacebookBotEngine {
   // ---------------------------------------------------------------------------
 
   private async setupInterceptor(page: Page) {
+    // Block heavy, unnecessary asset types — images/video/fonts don't affect
+    // message detection (that's all text/DOM/aria-label based) but account
+    // for a large share of Chromium's memory footprint when Facebook's
+    // JS-heavy UI is reloaded every few seconds. This directly reduces the
+    // container's memory ceiling risk (each Chromium instance is already
+    // heavy; on a 1GB Railway plan a single bot session can otherwise climb
+    // to the limit and get OOM-killed, causing the repeated
+    // "Browser closed/crashed" restart loop).
+    await page.route(/\.(?:png|jpe?g|gif|webp|svg|ico|bmp|mp4|webm|mov|woff2?|ttf|otf)(?:\?.*)?$/i, (route) => {
+      route.abort().catch(() => {});
+    });
+
     // Intercept messenger.com /api/graphql/ (main message data endpoint)
     await page.route("**/api/graphql/**", async (route, request) => {
       try {
