@@ -187,12 +187,21 @@ export class FacebookBotEngine {
   // ---------------------------------------------------------------------------
 
   private async handleMessage(threadId: string, isGroup: boolean, body: string, senderID: string, messageId: string) {
-    if (this.repliedMessageIds.has(messageId)) return;
+    if (this.repliedMessageIds.has(messageId)) {
+      this.blog("info", { threadId, messageId }, "Duplicate message event — already handled");
+      return;
+    }
     this.repliedMessageIds.add(messageId);
     if (this.repliedMessageIds.size > 500) this.repliedMessageIds.delete(this.repliedMessageIds.values().next().value!);
 
-    if (!this.opts.autoReplyEnabled()) return;
-    if (!body.trim()) return;
+    if (!this.opts.autoReplyEnabled()) {
+      this.blog("info", { threadId }, "Auto-reply is disabled — skipping");
+      return;
+    }
+    if (!body.trim()) {
+      this.blog("info", { threadId }, "Empty message body (likely an attachment-only message) — skipping");
+      return;
+    }
     if (isGroup) {
       this.blog("info", { threadId }, "Skipping group/community thread (DM-only mode)");
       return;
@@ -212,6 +221,8 @@ export class FacebookBotEngine {
         } else {
           this.blog("warn", { threadId }, "No AI config and no fallback message — skipping");
         }
+      } else {
+        this.blog("info", { threadId }, "resolveReply returned null (owner inactive, or thread not in allowed list) — skipping");
       }
       return;
     }
@@ -273,6 +284,7 @@ export class FacebookBotEngine {
         return;
       }
       if (!message) return;
+      this.blog("info", { type: message.type, threadId: message.threadID }, "MQTT event received");
       if (message.type === "message" || message.type === "message_reply") {
         this.handleMessage(message.threadID, !!message.isGroup, message.body ?? "", message.senderID, message.messageID)
           .catch((e) => this.blog("error", { err: describeErr(e) }, "handleMessage threw"));
