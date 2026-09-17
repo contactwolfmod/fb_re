@@ -30,6 +30,13 @@ async function buildAll() {
     external: [
       "*.node",
       "fca-unofficial",
+      // ws3-fca loads its own sub-modules at runtime via
+      // fs.readdirSync(path.join(__dirname, ..., "deltas", "apis")) — that
+      // only works against the real installed package directory. Bundled
+      // into our single-file output, __dirname instead resolves to
+      // dist/index.mjs's location and the scan 404s. Keep it external so
+      // Node loads it for real from node_modules at runtime.
+      "ws3-fca",
       // Pulled in transitively via ws3-fca's cookie-jar HTTP stack
       // (http-cookie-agent). Only required at runtime behind an
       // `async_UNSTABLE` flag we never set, so it's never actually loaded —
