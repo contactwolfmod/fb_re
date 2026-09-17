@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startBot, canAutoRestart } from "./bot/facebook";
+import { ADMIN_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "./lib/adminAuth";
 
 const rawPort = process.env["PORT"];
 
@@ -59,6 +60,18 @@ app.listen(port, async (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Diagnostic only (no secret values logged) — helps confirm via `railway logs`
+  // whether these env vars actually reached THIS running process/service,
+  // since editing them in the dashboard without a redeploy won't take effect.
+  logger.info(
+    {
+      ADMIN_TOKEN: ADMIN_TOKEN ? "set" : "MISSING",
+      GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? `set (${GOOGLE_CLIENT_ID.length} chars)` : "MISSING",
+      GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET ? "set" : "MISSING",
+    },
+    "Env var check at boot",
+  );
 
   // ── Priority 1: FB_COOKIES env var (Railway / explicit config) ──────────────
   const fbCookiesRaw = process.env["FB_COOKIES"];

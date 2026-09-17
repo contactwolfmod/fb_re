@@ -4,9 +4,10 @@ import { randomUUID, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 // Admin token from env (required). If not set, admin routes return 503.
 export const ADMIN_TOKEN = process.env["ADMIN_TOKEN"] ?? "";
 
-// Google OAuth env
-export const GOOGLE_CLIENT_ID = process.env["GOOGLE_CLIENT_ID"] ?? "";
-export const GOOGLE_CLIENT_SECRET = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+// Google OAuth env (trimmed — stray whitespace/newlines from pasting into a
+// dashboard "raw editor" is a common source of "looks set but reads empty")
+export const GOOGLE_CLIENT_ID = (process.env["GOOGLE_CLIENT_ID"] ?? "").trim();
+export const GOOGLE_CLIENT_SECRET = (process.env["GOOGLE_CLIENT_SECRET"] ?? "").trim();
 
 // Gemini OpenAI-compatible base URL
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";

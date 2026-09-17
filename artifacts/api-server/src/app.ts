@@ -14,6 +14,14 @@ import { ADMIN_TOKEN, requireAdmin, getUserToken, getAiAccount, markUserTokenUse
 
 const app: Express = express();
 
+// Railway terminates TLS at its edge proxy and forwards plain HTTP to this
+// container. Without trusting that proxy, Express's req.protocol/req.secure
+// always report "http"/false even on a public https:// request — which broke
+// the Google OAuth redirect_uri (built from req.protocol) and made session
+// cookies never get the Secure flag. Trust the first hop so both reflect the
+// real client-facing scheme.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
