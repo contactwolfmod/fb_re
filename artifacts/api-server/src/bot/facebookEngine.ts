@@ -1,26 +1,27 @@
-import login, { type IFCAU_API, type IFCAU_Options } from "@xaviabot/fca-unofficial";
+import { login } from "ws3-fca";
 import { logger } from "../lib/logger";
 import { bufferLog } from "../lib/logBuffer";
 import { getClaudeReply } from "./claude";
 import * as fs from "fs";
 import * as path from "path";
 
-// Persisted session cookies (fca-unofficial's AppState). On Railway: mount a
-// volume at /data and set STATE_DIR=/data for persistence across restarts.
+// Persisted session cookies (AppState array). On Railway: mount a volume at
+// /data and set STATE_DIR=/data for persistence across restarts/deploys.
 // Without a volume, state resets on each deploy.
 //
 // NOTE: this used to store a Playwright storageState() ({cookies, origins})
-// blob under the same file name, back when this engine drove a full headless
-// Chromium browser instead of fca-unofficial's HTTP/MQTT API. That format is
-// incompatible with the plain cookie array this engine now reads/writes —
-// loadSavedAppState() below detects the old shape and treats it as "no saved
-// state" rather than crashing, so the one-time consequence of this migration
-// is just needing to log back in once.
+// blob, then briefly an @xaviabot/fca-unofficial cookie array, under the
+// same file name. Both older formats are incompatible with the plain
+// {key,value} cookie array this engine reads/writes now —
+// loadSavedAppState() below detects an unparseable/old-shaped file and
+// treats it as "no saved state" rather than crashing, so the one-time
+// consequence of a format change is just needing to log back in once.
 const STATE_BASE = process.env.STATE_DIR ?? path.join(process.cwd(), "dist");
 
-// fca-unofficial frequently rejects/errors with plain objects (e.g.
-// {error: "..."}) rather than Error instances — String(err) on those just
-// prints "[object Object]", hiding the actual cause. Always log through this.
+// ws3-fca (and every other fca-unofficial-lineage library) reports errors as
+// plain objects (e.g. {error: "..."}) as often as real Error instances —
+// String(err) on those just prints "[object Object]", hiding the actual
+// cause. Always log through this.
 function describeErr(err: any): string {
   if (err instanceof Error) return err.stack ?? err.message;
   if (typeof err === "string") return err;
@@ -36,6 +37,14 @@ export type LoginCredentials =
   | { type: "appstate"; appState: any[] };
 
 // ── Special error thrown when Facebook requires 2FA ─────────────────────────
+// NOTE: ws3-fca's email/password login has no interactive 2FA-continuation
+// API (unlike some other fca forks) — a 2FA-protected account just fails
+// with a generic "Wrong password / email" error. This class and
+// submit2FACode() are kept so routes/user.ts and routes/bot.ts (which
+// import and handle them) don't need changes, but in practice this path is
+// no longer reachable: 2FA-protected accounts must connect via
+// appState/cookie login instead (2FA is a non-issue there, since the
+// cookies already come from a fully-authenticated browser session).
 export class TwoFactorRequired extends Error {
   constructor() {
     super("2FA_REQUIRED");
@@ -74,19 +83,18 @@ export interface EngineOptions {
   onUnresolvedThread?: (threadId: string) => Promise<string | null>;
 }
 
-type MqttEmitter = ReturnType<IFCAU_API["listenMqtt"]>;
-
-// selfListen/listenEvents off (default) → we only ever receive real "message"
-// / "message_reply" events, not our own echoes or thread-event noise.
-// logLevel/pauseLog silence the library's own npmlog output — our blog()
-// calls are the source of truth for what shows up in `railway logs`.
-const LOGIN_OPTIONS: Partial<IFCAU_Options> = {
+// selfListen/listenEvents off → we only ever receive real "message" /
+// "message_reply" events, not our own echoes or thread-event noise.
+// logging:false silences ws3-fca's own console output (colored [LOG]/[ERROR]
+// lines) — our blog() calls are the source of truth for `railway logs`.
+const LOGIN_OPTIONS: Record<string, any> = {
   selfListen: false,
   listenEvents: false,
+  updatePresence: false,
   autoMarkDelivery: false,
   autoMarkRead: false,
-  logLevel: "silent",
-  pauseLog: true,
+  online: false,
+  logging: false,
 };
 
 /**
@@ -96,21 +104,24 @@ const LOGIN_OPTIONS: Partial<IFCAU_Options> = {
  * so the same class backs both the single shared admin bot and per-customer
  * tenant bots.
  *
- * Built on @xaviabot/fca-unofficial (HTTP + MQTT, no browser) instead of a
- * Playwright-driven headless Chromium — the previous browser-based
- * implementation reloaded Facebook's full JS-based Messenger UI on a 5s
- * poll loop, which was heavy enough to exhaust a 1GB container running just
- * one session (confirmed via `railway metrics` — memory pinned at the
- * service's actual limit) and crash-looped every ~20s as a result.
+ * Built on ws3-fca (HTTP + MQTT, no browser) — a Playwright-driven headless
+ * Chromium implementation was replaced here because it reloaded Facebook's
+ * full JS-based Messenger UI on a 5s poll loop, heavy enough to exhaust a
+ * 1GB container running just one session (confirmed via `railway metrics` —
+ * memory pinned at the service's actual limit) and crash-loop every ~20s.
+ * An earlier attempt at this same migration used @xaviabot/fca-unofficial,
+ * whose initial message-sync call (a graphqlbatch request Facebook's
+ * anti-bot layer rejects from datacenter IPs) failed outright. ws3-fca
+ * avoids that specific call in the common case by reading the initial sync
+ * sequence ID straight out of the login page's HTML instead.
  */
 export class FacebookBotEngine {
   private opts: EngineOptions;
   private statePath: string;
   private autostartFlagPath: string;
 
-  private api: IFCAU_API | null = null;
-  private mqttEmitter: MqttEmitter | null = null;
-  private pending2FA: ((code: string) => Promise<IFCAU_API>) | null = null;
+  private api: any = null;
+  private mqttEmitter: any = null;
   // Cheap safety net — MQTT shouldn't double-deliver, but dedupe is nearly free.
   private repliedMessageIds = new Set<string>();
 
@@ -155,7 +166,7 @@ export class FacebookBotEngine {
     }
   }
 
-  /** Accept both fca-unofficial's native {key, ...} cookie shape and the
+  /** Accept both ws3-fca's native {key, ...} cookie shape and the
    *  {name, expirationDate} shape standard browser cookie-export extensions
    *  (Cookie-Editor, EditThisCookie, ...) produce — customers connecting
    *  their own account are far more likely to paste one of those. */
@@ -232,21 +243,17 @@ export class FacebookBotEngine {
     }
   }
 
-  private sendFbMessage(threadID: string, text: string): Promise<void> {
-    if (!this.api) return Promise.reject(new Error("Bot chưa đăng nhập."));
-    const api = this.api;
-    return new Promise<void>((resolve, reject) => {
-      api.sendMessage(text, threadID, (err) => (err ? reject(err) : resolve()));
-    });
+  private async sendFbMessage(threadID: string, text: string): Promise<void> {
+    if (!this.api) throw new Error("Bot chưa đăng nhập.");
+    await this.api.sendMessage(text, threadID);
   }
 
   // ---------------------------------------------------------------------------
   // Session lifecycle
   // ---------------------------------------------------------------------------
 
-  private onLoggedIn(api: IFCAU_API) {
+  private onLoggedIn(api: any) {
     this.api = api;
-    this.pending2FA = null;
     this.saveAppState();
 
     try {
@@ -258,7 +265,7 @@ export class FacebookBotEngine {
     this.opts.state.startedAt = new Date();
     this.opts.state.error = null;
 
-    this.mqttEmitter = api.listenMqtt((err, message) => {
+    this.mqttEmitter = api.listenMqtt((err: any, message: any) => {
       if (err) {
         this.blog("error", { err: describeErr(err) }, "listenMqtt error — session likely invalidated");
         this.opts.state.status = "error";
@@ -280,28 +287,10 @@ export class FacebookBotEngine {
     return fs.existsSync(this.autostartFlagPath) && fs.existsSync(this.statePath);
   }
 
-  // ── Submit OTP code when Facebook requires 2-step verification ───────────────
-  async submit2FACode(code: string): Promise<void> {
-    if (!this.pending2FA || this.opts.state.status !== "waiting_2fa") {
-      throw new Error("Không có phiên 2FA đang chờ. Vui lòng đăng nhập lại.");
-    }
-    this.blog("info", {}, "Submitting 2FA OTP code");
-    try {
-      const api = await this.pending2FA(code.trim());
-      this.onLoggedIn(api);
-    } catch (err: any) {
-      if (err?.error === "login-approval" && typeof err.continue === "function") {
-        // Wrong code — stay in waiting_2fa and allow retry with the new continuation.
-        this.pending2FA = err.continue;
-        const message = err?.errordesc ?? "Mã xác minh không đúng. Vui lòng thử lại.";
-        this.opts.state.error = message;
-        throw new Error(message);
-      }
-      this.opts.state.status = "error";
-      const message = err?.message ?? "Xác minh 2FA thất bại.";
-      this.opts.state.error = message;
-      throw err instanceof Error ? err : new Error(message);
-    }
+  // No interactive 2FA continuation exists in ws3-fca — see the class-level
+  // note on TwoFactorRequired. Kept only so callers don't need changes.
+  async submit2FACode(_code: string): Promise<void> {
+    throw new Error("Không có phiên 2FA đang chờ. Vui lòng đăng nhập lại bằng cookie (appState) thay vì email/mật khẩu.");
   }
 
   async start(credentials: LoginCredentials): Promise<void> {
@@ -314,28 +303,23 @@ export class FacebookBotEngine {
     this.opts.state.startedAt = null;
     this.opts.state.messagesHandled = 0;
     this.repliedMessageIds.clear();
-    this.pending2FA = null;
 
     const loginCreds =
       credentials.type === "appstate"
-        ? { appState: this.normalizeAppState(credentials.appState) }
+        ? { appState: this.normalizeAppState(credentials.appState.length > 0 ? credentials.appState : this.loadSavedAppState() ?? []) }
         : { email: credentials.email, password: credentials.password };
 
     this.blog("info", { type: credentials.type }, "Logging in to Facebook");
 
     try {
-      // fca-unofficial's own .d.ts mistypes `appState` as `{appState: Cookie[]}`
-      // instead of `Cookie[]` (confirmed against index.js, which reads
-      // loginData.appState as a plain array) — cast around that upstream bug.
-      const api = await login(loginCreds as any, LOGIN_OPTIONS);
+      const api = await new Promise<any>((resolve, reject) => {
+        login(loginCreds, LOGIN_OPTIONS, (err: any, resolvedApi: any) => {
+          if (err) reject(err);
+          else resolve(resolvedApi);
+        });
+      });
       this.onLoggedIn(api);
     } catch (err: any) {
-      if (err?.error === "login-approval" && typeof err.continue === "function") {
-        this.pending2FA = err.continue;
-        this.opts.state.status = "waiting_2fa";
-        this.opts.state.error = "Tài khoản yêu cầu xác minh 2 bước. Vui lòng nhập mã OTP để tiếp tục đăng nhập.";
-        throw new TwoFactorRequired();
-      }
       const message = err?.message ?? (typeof err === "string" ? err : err?.error ?? "Đăng nhập thất bại.");
       this.opts.state.status = "error";
       this.opts.state.error = message;
@@ -345,11 +329,10 @@ export class FacebookBotEngine {
   }
 
   stop(): void {
-    try { this.mqttEmitter?.stopListening(); } catch {}
-    try { this.api?.logout().catch(() => {}); } catch {}
+    try { this.mqttEmitter?.stop(); } catch {}
+    try { this.api?.logout?.().catch(() => {}); } catch {}
     this.api = null;
     this.mqttEmitter = null;
-    this.pending2FA = null;
     this.opts.state.status = "stopped";
     this.opts.state.error = null;
     // Remove autostart flag so server won't restart bot on next reboot
@@ -362,32 +345,23 @@ export class FacebookBotEngine {
   }
 
   /**
-   * Resolve a Facebook profile link to its numeric ID (and display name)
-   * using this engine's own logged-in session — a real Graph search
-   * (api.getUserID), not DOM scraping. Only works while the bot is running.
+   * Resolve a Facebook profile link to its numeric ID using this engine's
+   * own logged-in session. Only numeric links (profile.php?id=... or a bare
+   * numeric ID) can be resolved this way — ws3-fca has no vanity-name
+   * lookup API, so a vanity URL (facebook.com/some.name) falls straight
+   * back to the caller's next resolution tier (HTTP-based Open Graph
+   * scraping in lib/facebookId.ts, then manual entry).
    */
   async resolveProfileId(profileUrl: string): Promise<{ id?: string; name?: string; error?: string }> {
-    if (!this.api) {
-      return { error: "Bot chưa chạy nên không thể tra ID qua phiên đăng nhập. Vui lòng khởi động bot hoặc dán ID (dạng số) trực tiếp." };
-    }
-
     const idMatch = profileUrl.match(/profile\.php\?id=(\d{5,20})/);
     if (idMatch) return { id: idMatch[1] };
 
-    const vanity = profileUrl.match(/facebook\.com\/([a-zA-Z0-9.\-_]+)/i)?.[1];
-    if (!vanity || vanity.toLowerCase() === "profile.php") {
-      return { error: "Không đọc được tên người dùng từ link. Vui lòng dán ID Facebook (dạng số) trực tiếp." };
-    }
+    const bareIdMatch = profileUrl.trim().match(/^(\d{5,20})$/);
+    if (bareIdMatch) return { id: bareIdMatch[1] };
 
-    try {
-      const results = await this.api.getUserID(vanity);
-      const top = results?.[0];
-      if (!top?.userID) {
-        return { error: "Không tìm thấy người dùng này qua phiên đăng nhập. Vui lòng dán ID Facebook (dạng số) trực tiếp." };
-      }
-      return { id: top.userID, name: top.name };
-    } catch (err: any) {
-      return { error: err?.message ?? "Không tra được ID qua phiên đăng nhập." };
-    }
+    return {
+      error:
+        "Không đọc được ID số từ link này qua phiên đăng nhập bot. Vui lòng dán ID Facebook (dạng số) hoặc link dạng profile.php?id=...",
+    };
   }
 }
