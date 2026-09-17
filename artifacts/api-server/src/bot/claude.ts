@@ -124,6 +124,62 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
   }
 }
 
+const geminiSetupCache = new Map<string, { projectId: string; expiresAt: number }>();
+const GEMINI_CLIENT_METADATA = {
+  ideType: "IDE_UNSPECIFIED",
+  platform: "PLATFORM_UNSPECIFIED",
+  pluginType: "GEMINI",
+};
+
+async function postCodeAssist<T>(accessToken: string, method: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(`${GEMINI_BASE_URL}:${method}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+  const data = await res.json().catch(() => ({})) as any;
+  if (!res.ok) {
+    const message = data?.error?.message || data?.message || `${res.status} ${res.statusText}`;
+    throw Object.assign(new Error(message), { status: res.status, details: data });
+  }
+  return data as T;
+}
+
+async function ensureGeminiCodeAssistReady(accessToken: string, signal?: AbortSignal): Promise<string> {
+  const cacheKey = accessToken.slice(0, 24);
+  const cached = geminiSetupCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.projectId;
+
+  const loadReq = {
+    metadata: GEMINI_CLIENT_METADATA,
+  };
+  const loadRes = await postCodeAssist<any>(accessToken, "loadCodeAssist", loadReq, signal);
+  let projectId = loadRes?.cloudaicompanionProject as string | undefined;
+
+  if (!projectId) {
+    const freeTier = (loadRes?.allowedTiers ?? []).find((t: any) => t?.id === "FREE" || t?.isDefault) ?? loadRes?.currentTier;
+    const tierId = freeTier?.id ?? "FREE";
+    const onboardRes = await postCodeAssist<any>(accessToken, "onboardUser", {
+      tierId,
+      cloudaicompanionProject: undefined,
+      metadata: GEMINI_CLIENT_METADATA,
+    }, signal);
+    projectId = onboardRes?.response?.cloudaicompanionProject?.id || onboardRes?.cloudaicompanionProject?.id;
+  }
+
+  if (!projectId) {
+    const reason = (loadRes?.ineligibleTiers ?? []).map((t: any) => t?.reasonMessage).filter(Boolean).join("; ");
+    throw new Error(reason || "Gemini Code Assist chưa sẵn sàng cho tài khoản này.");
+  }
+
+  geminiSetupCache.set(cacheKey, { projectId, expiresAt: Date.now() + 30 * 60_000 });
+  return projectId;
+}
+
 async function callGeminiCodeAssist(opts: {
   accessToken: string;
   model: string;
@@ -132,12 +188,14 @@ async function callGeminiCodeAssist(opts: {
   maxTokens: number;
   signal?: AbortSignal;
 }): Promise<string> {
+  const projectId = await ensureGeminiCodeAssistReady(opts.accessToken, opts.signal);
   const contents = opts.history.map(m => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
   const body = {
     model: opts.model,
+    project: projectId,
     user_prompt_id: randomId(),
     request: {
       contents,
@@ -145,20 +203,7 @@ async function callGeminiCodeAssist(opts: {
       generationConfig: { maxOutputTokens: opts.maxTokens },
     },
   };
-  const res = await fetch(`${GEMINI_BASE_URL}:generateContent`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${opts.accessToken}`,
-    },
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  });
-  const data = await res.json().catch(() => ({})) as any;
-  if (!res.ok) {
-    const message = data?.error?.message || data?.message || `${res.status} ${res.statusText}`;
-    throw Object.assign(new Error(message), { status: res.status });
-  }
+  const data = await postCodeAssist<any>(opts.accessToken, "generateContent", body, opts.signal);
   const parts = data?.response?.candidates?.[0]?.content?.parts;
   if (Array.isArray(parts)) {
     return parts.map((p: any) => typeof p?.text === "string" ? p.text : "").join("").trim();

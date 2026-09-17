@@ -533,7 +533,18 @@ router.post("/u/:id/threads/remove", async (req: Request, res: Response) => {
   if (u) await removeServiceUserThread(id, String(req.body.threadId ?? ""));
   res.redirect(`/u/${id}`);
 });
-router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,u.systemPrompt||botState.systemPrompt,u.id)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
+router.post("/u/:id/chat", async (req, res): Promise<void> => {
+  const u = await current(req, req.params.id.toLowerCase());
+  const prompt = String(req.body.prompt ?? "").trim();
+  if (!u) { res.status(401).json({ error: "Cần đăng nhập." }); return; }
+  if (!prompt) { res.status(400).json({ error: "Thiếu tin nhắn." }); return; }
+  try {
+    res.json({ reply: await getClaudeReply(u.id, prompt, u.systemPrompt || botState.systemPrompt, u.id) });
+  } catch (err: any) {
+    const detail = String(err?.message ?? "").trim();
+    res.status(502).json({ error: detail ? `AI lỗi: ${detail}` : "AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin." });
+  }
+});
 
 // ── Custom AI config (manual API key) ─────────────────────────────────────────
 router.post("/u/:id/ai-config", async (req: Request, res: Response) => {
