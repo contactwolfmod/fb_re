@@ -286,7 +286,15 @@ export class FacebookBotEngine {
       if (!message) return;
       this.blog("info", { type: message.type, threadId: message.threadID }, "MQTT event received");
       if (message.type === "message" || message.type === "message_reply") {
-        this.handleMessage(message.threadID, !!message.isGroup, message.body ?? "", message.senderID, message.messageID)
+        // ws3-fca's own `isGroup` flag is unreliable: its realtime formatter
+        // sets it from Facebook's threadKey.threadFbId, which is also set
+        // for a 1-on-1 "message request" from someone not yet a contact —
+        // not just for real multi-person groups. participantIDs.length is
+        // the accurate signal (a real group has more than 2 people); fall
+        // back to the library's flag only if that field is missing.
+        const participantCount = Array.isArray(message.participantIDs) ? message.participantIDs.length : null;
+        const isGroup = participantCount !== null ? participantCount > 2 : !!message.isGroup;
+        this.handleMessage(message.threadID, isGroup, message.body ?? "", message.senderID, message.messageID)
           .catch((e) => this.blog("error", { err: describeErr(e) }, "handleMessage threw"));
       }
     });
