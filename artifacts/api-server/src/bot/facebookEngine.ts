@@ -1138,15 +1138,23 @@ export class FacebookBotEngine {
     if (credentials.type === "appstate") {
       // Always inject the user's fresh cookies on top of any saved state.
       // This ensures the latest tokens are used even if saved state has older cookies.
-      const cookiesBases = credentials.appState.map((c: any) => ({
-        name: c.key,
-        value: c.value,
-        path: c.path ?? "/",
-        expires: typeof c.expires === "number" && c.expires > 0 ? c.expires : -1,
-        httpOnly: c.httpOnly ?? true,
-        secure: c.secure ?? true,
-        sameSite: "None" as const,
-      }));
+      // Accept both fca-unofficial's {key, expires} shape and the {name,
+      // expirationDate} shape that standard browser extensions (Cookie-Editor,
+      // EditThisCookie, etc.) export — customers connecting their own
+      // Facebook account are far more likely to use one of those than to
+      // hand-format fca-unofficial's native JSON.
+      const cookiesBases = credentials.appState.map((c: any) => {
+        const rawExpires = c.expires ?? c.expirationDate;
+        return {
+          name: c.key ?? c.name,
+          value: c.value,
+          path: c.path ?? "/",
+          expires: typeof rawExpires === "number" && rawExpires > 0 ? rawExpires : -1,
+          httpOnly: c.httpOnly ?? true,
+          secure: c.secure ?? true,
+          sameSite: "None" as const,
+        };
+      });
       const fbCookies = cookiesBases.map((c) => ({ ...c, domain: ".facebook.com" }));
       const msgrCookies = cookiesBases.map((c) => ({ ...c, domain: ".messenger.com" }));
       await this.bContext.addCookies([...fbCookies, ...msgrCookies]);

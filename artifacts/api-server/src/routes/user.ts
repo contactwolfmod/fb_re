@@ -252,9 +252,18 @@ function fbBotCard(id: string, state: { status: string; error: string | null; me
         <button type="submit" class="btn btn-danger" style="width:100%">${icon("trash")} Dừng bot</button>
       </form>
     ` : `
+      <details style="margin-bottom:14px">
+        <summary><div class="summary-row">${icon("edit", 14)} Cách lấy cookie Facebook (1 phút)</div></summary>
+        <div class="panel" style="margin-top:10px;font-size:.8rem;line-height:1.7;color:var(--text-dim)">
+          1. Cài tiện ích miễn phí <strong style="color:var(--text)">"Cookie-Editor"</strong> cho Chrome/Edge/Firefox (tìm trên cửa hàng tiện ích của trình duyệt).<br>
+          2. Đăng nhập Facebook bằng tài khoản bạn muốn dùng cho bot (nên dùng tài khoản phụ, xem lưu ý rủi ro ở trên).<br>
+          3. Ở tab facebook.com, bấm icon Cookie-Editor trên thanh công cụ &rarr; chọn <strong style="color:var(--text)">Export</strong> &rarr; <strong style="color:var(--text)">Export as JSON</strong> (nội dung được tự copy vào clipboard).<br>
+          4. Dán toàn bộ nội dung vừa copy vào ô bên dưới rồi bấm "Kết nối Facebook".
+        </div>
+      </details>
       <form method="post" action="/u/${id}/fb-bot/start">
         <label>Cookie Facebook (khuyến nghị)</label>
-        <textarea name="cookies" rows="3" placeholder="c_user=...; xs=...; datr=... (copy từ DevTools → Application → Cookies)" style="margin-bottom:6px"></textarea>
+        <textarea name="cookies" rows="3" placeholder="Dán JSON từ Cookie-Editor, hoặc chuỗi c_user=...; xs=...; datr=..." style="margin-bottom:6px"></textarea>
         <div style="font-size:.72rem;color:var(--text-mute);margin-bottom:12px">Hoặc đăng nhập bằng email/mật khẩu bên dưới (có thể cần xác minh 2FA)</div>
         <div class="mode-grid">
           <div><label>Email/SĐT</label><input name="email" placeholder="email@vidu.com" style="margin-bottom:0"></div>
