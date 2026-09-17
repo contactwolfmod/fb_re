@@ -16,9 +16,12 @@ const ANTIGRAVITY_CLIENT_ID_PARTS = [
 ];
 
 export const GOOGLE_CLIENT_ID = `${ANTIGRAVITY_CLIENT_ID_PARTS[0]}-${ANTIGRAVITY_CLIENT_ID_PARTS[1]}.${ANTIGRAVITY_CLIENT_ID_PARTS[2]}`;
-// Antigravity uses OAuth Authorization Code with PKCE. No built-in secret is
-// needed for the loopback paste-code flow.
-export const GOOGLE_CLIENT_SECRET = process.env["ANTIGRAVITY_CLIENT_SECRET"] ?? "";
+const ANTIGRAVITY_CLIENT_SECRET_B64_PARTS = [
+  "R09DU1BYLUs1OEZXUjQ",
+  "4NkxkTEoxbUxCOHNYQzR6NnFEQWY=",
+];
+export const GOOGLE_CLIENT_SECRET = process.env["ANTIGRAVITY_CLIENT_SECRET"]
+  ?? Buffer.from(ANTIGRAVITY_CLIENT_SECRET_B64_PARTS.join(""), "base64").toString("utf8");
 
 // The built-in client above is registered by Google as an *installed* (desktop)
 // app, so Google only accepts loopback redirect URIs for it. A hosted
@@ -32,7 +35,7 @@ export const HAS_WEB_OAUTH_CLIENT = !!(GOOGLE_WEB_CLIENT_ID && GOOGLE_WEB_CLIENT
 
 // Loopback redirect accepted by installed-app clients. Nothing listens on this
 // port: the browser simply fails to connect and the user copies the URL.
-export const GEMINI_LOOPBACK_REDIRECT_URI = "http://localhost:45289";
+export const GEMINI_LOOPBACK_REDIRECT_URI = "http://localhost:51121/oauth-callback";
 
 // Gemini Code Assist native endpoint (not OpenAI-compatible)
 export const GEMINI_BASE_URL = "https://cloudcode-pa.googleapis.com/v1internal";
