@@ -55,9 +55,10 @@ async function resolveClient(threadId?: string): Promise<ResolvedClient> {
     const owner = await resolveServiceUserForThread(threadId);
     const userConfig = await getUserAiConfig(owner?.id ?? threadId);
     if (userConfig && userConfig.accessToken) {
+      const effectiveBaseUrl = userConfig.baseUrl || GEMINI_BASE_URL;
       return {
         provider: "openai-compat",
-        openaiClient: new OpenAI({ baseURL: GEMINI_BASE_URL, apiKey: userConfig.accessToken }),
+        openaiClient: new OpenAI({ baseURL: effectiveBaseUrl, apiKey: userConfig.accessToken }),
         model: userConfig.model,
         timeoutMs: botState.aiTimeoutMs,
         maxTokens: botState.aiMaxTokens,

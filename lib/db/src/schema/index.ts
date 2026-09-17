@@ -39,14 +39,19 @@ export const userTokensTable = pgTable("user_tokens", {
   redirectUrl: text("redirect_url").notNull(),
 });
 
-// ── Per-owner Gemini AI config ──────────────────────────────────────────────
+// ── Per-owner AI config ─────────────────────────────────────────────────────
 // Keyed by "ownerKey": a service user's ID for the self-service flow, or a
 // raw FB thread ID for the legacy one-off connect-link flow.
+// When baseUrl is set, the bot uses that custom OpenAI-compatible endpoint
+// with apiKey stored in accessToken. When baseUrl is null/empty, the bot
+// treats accessToken as a Google OAuth token and uses GEMINI_BASE_URL.
 export const userAiConfigsTable = pgTable("user_ai_configs", {
   ownerKey: text("owner_key").primaryKey(),
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token"),
   tokenExpiry: bigint("token_expiry", { mode: "number" }).notNull(),
   model: text("model").notNull(),
+  baseUrl: text("base_url"),
+  providerLabel: text("provider_label"),
   connectedAt: bigint("connected_at", { mode: "number" }).notNull(),
 });

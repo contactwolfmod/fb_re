@@ -166,6 +166,7 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
         refreshToken: tokens.refresh_token,
         tokenExpiry: Date.now() + tokens.expires_in * 1000,
         model: GEMINI_DEFAULT_MODEL,
+        providerLabel: "Gemini",
         connectedAt: Date.now(),
       });
       if (userTokenId) await markUserTokenUsed(userTokenId, "gemini-oauth");

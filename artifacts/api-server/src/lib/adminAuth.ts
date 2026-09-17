@@ -122,20 +122,30 @@ setInterval(() => {
   db.delete(userTokensTable).where(lt(userTokensTable.expiresAt, Date.now())).catch(() => {});
 }, 600_000);
 
-// ── Per-owner Gemini AI config ─────────────────────────────────────────────────
+// ── Per-owner AI config ───────────────────────────────────────────────────────
 // Keyed by "ownerKey": a service user's ID for the self-service flow, or a raw
 // FB thread ID for the legacy one-off connect-link flow (no service user account).
+// When baseUrl is set, bot uses that custom OpenAI-compatible endpoint with
+// apiKey in accessToken. When baseUrl is empty/undefined, accessToken is a
+// Google OAuth token and bot uses GEMINI_BASE_URL.
 export interface UserAiConfig {
   ownerKey: string;
   accessToken: string;
   refreshToken?: string;
   tokenExpiry: number;   // epoch ms
   model: string;
+  baseUrl?: string;          // custom provider base URL (null = Gemini OAuth)
+  providerLabel?: string;    // e.g. "ChatGPT", "OpenRouter", "Gemini"
   connectedAt: number;
 }
 
 export async function setUserAiConfig(config: UserAiConfig): Promise<void> {
-  const values = { ...config, refreshToken: config.refreshToken ?? null };
+  const values = {
+    ...config,
+    refreshToken: config.refreshToken ?? null,
+    baseUrl: config.baseUrl ?? null,
+    providerLabel: config.providerLabel ?? null,
+  };
   await db.insert(userAiConfigsTable).values(values).onConflictDoUpdate({
     target: userAiConfigsTable.ownerKey,
     set: {
@@ -143,6 +153,8 @@ export async function setUserAiConfig(config: UserAiConfig): Promise<void> {
       refreshToken: values.refreshToken,
       tokenExpiry: values.tokenExpiry,
       model: values.model,
+      baseUrl: values.baseUrl,
+      providerLabel: values.providerLabel,
       connectedAt: values.connectedAt,
     },
   });
@@ -151,7 +163,7 @@ export async function setUserAiConfig(config: UserAiConfig): Promise<void> {
 export async function getUserAiConfig(ownerKey: string): Promise<UserAiConfig | undefined> {
   const [row] = await db.select().from(userAiConfigsTable).where(eq(userAiConfigsTable.ownerKey, ownerKey));
   if (!row) return undefined;
-  return { ...row, refreshToken: row.refreshToken ?? undefined };
+  return { ...row, refreshToken: row.refreshToken ?? undefined, baseUrl: row.baseUrl ?? undefined, providerLabel: row.providerLabel ?? undefined };
 }
 
 export async function updateUserAiModel(ownerKey: string, model: string): Promise<boolean> {
@@ -167,7 +179,7 @@ export async function deleteUserAiConfig(ownerKey: string): Promise<void> {
 
 export async function listUserAiConfigs(): Promise<UserAiConfig[]> {
   const rows = await db.select().from(userAiConfigsTable);
-  return rows.map(row => ({ ...row, refreshToken: row.refreshToken ?? undefined })).sort((a, b) => b.connectedAt - a.connectedAt);
+  return rows.map(row => ({ ...row, refreshToken: row.refreshToken ?? undefined, baseUrl: row.baseUrl ?? undefined, providerLabel: row.providerLabel ?? undefined })).sort((a, b) => b.connectedAt - a.connectedAt);
 }
 
 export async function fetchGeminiModels(accessToken: string): Promise<string[]> {

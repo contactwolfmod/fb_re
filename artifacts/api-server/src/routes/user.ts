@@ -6,6 +6,8 @@ import {
   getSessionUser,
   getServiceUser,
   getUserAiConfig,
+  setUserAiConfig,
+  deleteUserAiConfig,
   updateUserAiModel,
   fetchGeminiModels,
   setServiceUserReplyMode,
@@ -126,8 +128,18 @@ function css() {
     .chat-form{display:flex;gap:8px;align-items:flex-end}
     .chat-form textarea{resize:vertical;min-height:44px}
 
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+    .span-all{grid-column:1/-1}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    details > summary{cursor:pointer;list-style:none}
+    details > summary::-webkit-details-marker{display:none}
+    .summary-row{display:flex;align-items:center;gap:8px;color:#a5adf7;font-size:.83rem;font-weight:650;padding:.4rem 0}
+    .hint{font-size:.7rem;color:var(--text-mute);margin-top:-.75rem;margin-bottom:1rem}
+
     @media(max-width:520px){
       .mode-grid{grid-template-columns:1fr}
+      .form-grid{grid-template-columns:1fr}
       .card{padding:16px}
       .page-wrap{padding:22px 14px 50px}
     }
@@ -213,31 +225,84 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
   const threadErr = req.query["threadErr"] ? `<div class="alert alert-err">${icon("alert")}<span>${esc(decodeURIComponent(String(req.query["threadErr"])))}</span></div>` : "";
 
   let aiBlock = "";
-  if (c && c.accessToken) {
+  const isCustomProvider = !!(c && c.baseUrl);
+  const isGeminiOAuth = !!(c && c.accessToken && !c.baseUrl);
+  const configSaved = req.query["configSaved"] ? `<div class="alert alert-ok">${icon("check")}<span>Đã lưu cấu hình AI thành công!</span></div>` : "";
+  const configErr = req.query["configErr"] ? `<div class="alert alert-err">${icon("alert")}<span>${esc(decodeURIComponent(String(req.query["configErr"])))}</span></div>` : "";
+  const configDeleted = req.query["configDeleted"] ? `<div class="alert alert-ok">${icon("check")}<span>Đã xóa cấu hình AI. Bạn có thể thêm tài khoản mới.</span></div>` : "";
+
+  let currentConfigBlock = "";
+  if (isCustomProvider && c) {
+    currentConfigBlock = `<div class="panel" style="margin-bottom:16px;border-color:rgba(139,92,246,.3)">
+      <div class="gemini-connected-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="gemini-status" style="color:#a78bfa">${icon("cpu", 13)} ${esc(c.providerLabel || "Custom API")}</div>
+          <span class="badge badge-ok">Đang hoạt động</span>
+        </div>
+        <form method="post" action="/u/${id}/ai-config/delete" style="margin:0">
+          <button class="btn btn-danger btn-sm">${icon("trash", 13)} Xóa</button>
+        </form>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <div><span style="font-size:.72rem;color:var(--text-mute)">Base URL</span><div class="mono" style="font-size:.78rem;color:#818cf8;word-break:break-all">${esc(c.baseUrl!)}</div></div>
+        <div><span style="font-size:.72rem;color:var(--text-mute)">Model</span><div style="font-size:.85rem;font-weight:650;color:var(--text)">${esc(c.model)}</div></div>
+      </div>
+      <form method="post" action="/u/${id}/model" style="margin-top:12px;display:flex;gap:8px;align-items:end">
+        <div style="flex:1"><label style="font-size:.72rem">Đổi model</label><input name="customModel" value="${esc(c.model)}" required></div>
+        <button type="submit" class="btn btn-primary btn-sm">${icon("check", 13)} Lưu</button>
+      </form>
+    </div>`;
+  } else if (isGeminiOAuth && c) {
     const models = await fetchGeminiModels(c.accessToken);
     if (!models.includes(c.model)) models.unshift(c.model);
     const opts = models.map(m => `<option value="${esc(m)}" ${m === c.model ? "selected" : ""}>${esc(m)}${m === c.model ? " (đang dùng)" : ""}</option>`).join("");
 
-    aiBlock = `<section class="card">
+    currentConfigBlock = `<div class="panel" style="margin-bottom:16px;border-color:rgba(52,211,153,.3)">
       <div class="gemini-connected-head">
-        <div class="card-head" style="margin-bottom:0"><div class="card-icon">${icon("sparkles", 15)}</div><div><div class="card-title">Model Gemini từ tài khoản Google của bạn</div><div class="gemini-status">${icon("check", 13)} Đã kết nối Google account</div></div></div>
-        <a class="btn btn-ghost btn-sm" href="/u/${id}/gemini">${icon("rotate", 13)} Kết nối Google khác</a>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="gemini-status">${icon("check", 13)} Gemini (Google OAuth)</div>
+          <span class="badge badge-ok">Đang hoạt động</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <a class="btn btn-ghost btn-sm" href="/u/${id}/gemini">${icon("rotate", 13)} Đổi Google</a>
+          <form method="post" action="/u/${id}/ai-config/delete" style="margin:0">
+            <button class="btn btn-danger btn-sm">${icon("trash", 13)} Xóa</button>
+          </form>
+        </div>
       </div>
-      <p class="card-note" style="margin-bottom:14px">Danh sách model có thể dùng trên tài khoản Google của bạn. Chọn model để kết nối:</p>
-      <form method="post" action="/u/${id}/model">
+      <form method="post" action="/u/${id}/model" style="margin-top:12px">
         <label>Chọn Model Gemini</label>
-        <select name="model" required style="margin-bottom:12px">${opts}</select>
-        <label style="font-size:.72rem">Hoặc tự gõ model khác (tùy chọn)</label>
-        <input name="customModel" placeholder="Để trống để dùng model ở trên..." style="margin-bottom:14px">
+        <select name="model" required style="margin-bottom:8px">${opts}</select>
+        <label style="font-size:.72rem">Hoặc tự gõ model khác</label>
+        <input name="customModel" placeholder="Để trống để dùng model ở trên..." style="margin-bottom:12px">
         <button type="submit" class="btn btn-primary" style="width:100%">${icon("check")} Lưu Model</button>
       </form>
-    </section>`;
-  } else {
-    aiBlock = `<section class="card" style="border-color:rgba(56,189,248,.3)">
-      <div class="card-head"><div class="card-icon" style="background:rgba(56,189,248,.14);color:#38bdf8">${icon("link", 15)}</div><div><div class="card-title">Kết nối tài khoản Google để dùng Gemini</div><div class="card-note">Hệ thống sẽ lấy danh sách model Gemini trên tài khoản Google của bạn để bạn chọn.</div></div></div>
-      <a class="btn btn-google" href="/u/${id}/gemini" style="width:100%">${icon("key", 15)} Đăng nhập Google &amp; Kết nối Gemini</a>
-    </section>`;
+    </div>`;
   }
+
+  const hasConfig = !!(c && c.accessToken);
+  aiBlock = `<section class="card">
+    <div class="card-head"><div class="card-icon">${icon("sparkles", 15)}</div><div><div class="card-title">Tài khoản AI</div><div class="card-note">Thêm Google Gemini (OAuth) hoặc nhập API key thủ công (ChatGPT, OpenRouter, Claude, 9Router...)</div></div></div>
+    ${configSaved}${configErr}${configDeleted}
+    ${currentConfigBlock}
+    ${hasConfig ? `<details style="margin-top:8px"><summary><div class="summary-row">${icon("plus", 14)} Thay đổi sang tài khoản AI khác</div></summary>` : ""}
+    <div class="panel" style="margin-top:${hasConfig ? "10px" : "14px"}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <a class="btn btn-google" href="/u/${id}/gemini" style="text-align:center">${icon("key", 15)} Google Gemini (OAuth)</a>
+        <button type="button" class="btn btn-ghost" style="border:1px solid var(--border)" onclick="document.getElementById('custom-form').style.display=document.getElementById('custom-form').style.display==='none'?'block':'none'">${icon("cpu", 15)} Nhập API Key thủ công</button>
+      </div>
+      <div id="custom-form" style="display:${hasConfig ? "none" : "block"}">
+        <form method="post" action="/u/${id}/ai-config" class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div><label>Tên provider</label><input name="providerLabel" placeholder="ChatGPT / OpenRouter / Claude..." required></div>
+          <div><label>Base URL (OpenAI-compatible)</label><input name="baseUrl" placeholder="https://api.openai.com/v1" required><div class="hint">Endpoint tương thích OpenAI Chat Completions</div></div>
+          <div><label>API Key</label><input name="apiKey" type="password" placeholder="sk-..." required></div>
+          <div><label>Model</label><input name="model" placeholder="gpt-4o-mini / claude-sonnet-4-6 / ..." required></div>
+          <div class="span-all"><button type="submit" class="btn btn-primary" style="width:100%">${icon("plus")} Thêm tài khoản AI</button></div>
+        </form>
+      </div>
+    </div>
+    ${hasConfig ? "</details>" : ""}
+  </section>`;
 
   res.send(page(user.name, `
     <header class="user-header">
@@ -320,4 +385,36 @@ router.post("/u/:id/threads/remove", async (req: Request, res: Response) => {
   res.redirect(`/u/${id}`);
 });
 router.post("/u/:id/chat",async(req,res): Promise<void>=>{const u=await current(req,req.params.id.toLowerCase());const prompt=String(req.body.prompt??"").trim();if(!u){res.status(401).json({error:"Cần đăng nhập."});return;}if(!prompt){res.status(400).json({error:"Thiếu tin nhắn."});return;}try{res.json({reply:await getClaudeReply(u.id,prompt,botState.systemPrompt)})}catch{res.status(502).json({error:"AI chưa sẵn sàng. Hãy kết nối Gemini hoặc liên hệ admin."})}});
+
+// ── Custom AI config (manual API key) ─────────────────────────────────────────
+router.post("/u/:id/ai-config", async (req: Request, res: Response) => {
+  const id = (req.params.id as string).toLowerCase();
+  const u = await current(req, id);
+  if (!u) { res.redirect(`/u/${id}`); return; }
+  const { providerLabel, baseUrl, apiKey, model } = req.body as {
+    providerLabel?: string; baseUrl?: string; apiKey?: string; model?: string;
+  };
+  if (!baseUrl?.trim() || !apiKey?.trim() || !model?.trim()) {
+    res.redirect(`/u/${id}?configErr=${encodeURIComponent("Vui lòng nhập đầy đủ Base URL, API Key và Model.")}`);
+    return;
+  }
+  await setUserAiConfig({
+    ownerKey: u.id,
+    accessToken: apiKey.trim(),
+    tokenExpiry: 0,
+    model: model.trim(),
+    baseUrl: baseUrl.trim(),
+    providerLabel: (providerLabel ?? "Custom").trim().slice(0, 60),
+    connectedAt: Date.now(),
+  });
+  res.redirect(`/u/${id}?configSaved=1`);
+});
+
+router.post("/u/:id/ai-config/delete", async (req: Request, res: Response) => {
+  const id = (req.params.id as string).toLowerCase();
+  const u = await current(req, id);
+  if (u) await deleteUserAiConfig(u.id);
+  res.redirect(`/u/${id}?configDeleted=1`);
+});
+
 export default router;
