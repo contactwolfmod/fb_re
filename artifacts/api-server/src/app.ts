@@ -116,8 +116,14 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
     return;
   }
 
-  // Built-in installed-app client: Google only accepts a loopback redirect, so
-  // send the user to Google and have them paste back the resulting URL/code.
+  renderLoopbackConnectPage(res, state);
+});
+
+// Built-in installed-app client: Google only accepts a loopback redirect, so
+// send the user to Google and have them paste back the resulting URL/code.
+// This client is Google's own published Gemini CLI app, so it works for any
+// Google account without the deployment owning a verified consent screen.
+function renderLoopbackConnectPage(res: Response, state: string, notice?: string): void {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GEMINI_LOOPBACK_REDIRECT_URI,
@@ -128,12 +134,16 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
     state,
   });
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  const noticeHtml = notice
+    ? `<p style="background:#2a1b1b;border:1px solid #5b2b2b;color:#fca5a5;border-radius:8px;padding:12px;font-size:13px;margin:0 0 16px">${notice}</p>`
+    : "";
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kết nối Google Gemini</title>
   <style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0b0d14;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;margin:0}.card{background:#121624;border:1px solid #23293e;border-radius:14px;padding:28px;max-width:560px;width:100%}ol{text-align:left;color:#94a3b8;font-size:14px;line-height:1.7;padding-left:20px}code{background:#080a10;padding:2px 6px;border-radius:4px;color:#a5b4fc;font-size:13px;word-break:break-all}input{width:100%;padding:12px;border-radius:8px;border:1px solid #333a52;background:#080a10;color:#fff;font-size:14px;margin:10px 0 16px}button,.btn{display:block;text-align:center;background:#6366f1;color:#fff;border:0;border-radius:8px;padding:12px 20px;font-weight:600;font-size:15px;cursor:pointer;width:100%;text-decoration:none;margin-bottom:16px}</style>
   </head><body><div class="card">
     <h2 style="margin:0 0 12px">Kết nối Google Gemini</h2>
+    ${noticeHtml}
     <a class="btn" href="${authUrl}" target="_blank" rel="noopener">Bước 1 — Mở trang đăng nhập Google</a>
     <ol>
       <li>Đăng nhập và bấm đồng ý (Allow).</li>
@@ -147,7 +157,7 @@ app.get("/connect/gemini", async (req: Request, res: Response) => {
       <button type="submit">Bước 2 — Hoàn tất kết nối</button>
     </form>
   </div></body></html>`);
-});
+}
 
 interface GoogleTokens {
   access_token: string;
@@ -193,9 +203,27 @@ function extractAuthCode(pasted: string): string | undefined {
 app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
   const { code, state, error } = req.query as Record<string, string>;
 
+  const stateData = consumeOAuthState(state ?? "");
+
+  // A deployment-owned consent screen that is still in "Testing" (or unverified
+  // for the sensitive cloud-platform scope) rejects every customer outside the
+  // test-user list. Rather than dead-end them, retry with Google's own published
+  // Gemini CLI client via the loopback paste flow, which any account can use.
+  if (error === "access_denied" && stateData) {
+    const retryState = createOAuthState(
+      stateData.isAdmin, stateData.ownerKey, stateData.userTokenId, stateData.serviceUserId,
+    );
+    logger.warn({ ownerKey: stateData.ownerKey }, "Gemini web-client consent denied, falling back to loopback flow");
+    renderLoopbackConnectPage(
+      res,
+      retryState,
+      "Google đã từ chối ứng dụng riêng của hệ thống (access_denied). Hãy dùng cách kết nối thay thế bên dưới — cách này hoạt động với mọi tài khoản Google.",
+    );
+    return;
+  }
+
   if (error) { res.redirect(`/admin?geminiErr=${encodeURIComponent(error)}`); return; }
 
-  const stateData = consumeOAuthState(state ?? "");
   if (!stateData) {
     res.status(400).setHeader("Content-Type", "text/html; charset=utf-8");
     res.send("OAuth state khong hop le hoac het han. <a href='/admin'>Quay lai</a>");
