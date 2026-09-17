@@ -1266,4 +1266,80 @@ export class FacebookBotEngine {
   getFacebookApi() {
     return this.bPage ? { active: true } : null;
   }
+
+  /**
+   * Best-effort: resolve a Facebook profile link to its numeric ID (and
+   * display name) using this engine's own logged-in browser session,
+   * instead of a bare server-side HTTP request. This is the one channel in
+   * the whole system already proven to pass Facebook's bot detection
+   * (it's a genuine authenticated browser, not a fetch() call) — but it
+   * only works while the bot is actually running.
+   *
+   * Briefly navigates the shared page away from the inbox and back, which
+   * can overlap with an in-flight poll cycle; that's tolerated the same
+   * way the poll loop already tolerates its own churn (worst case, one
+   * poll cycle sees a transient page and just retries 5s later).
+   */
+  async resolveProfileId(profileUrl: string): Promise<{ id?: string; name?: string; error?: string }> {
+    if (!this.bPage) {
+      return { error: "Bot chưa chạy nên không thể tra ID qua phiên đăng nhập. Vui lòng khởi động bot hoặc dán ID (dạng số) trực tiếp." };
+    }
+    const page = this.bPage;
+    try {
+      await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
+      await page.waitForTimeout(2000);
+
+      const result = await page.evaluate(() => {
+        const candidates: (string | undefined)[] = [
+          (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href,
+          (document.querySelector('meta[property="og:url"]') as HTMLMetaElement | null)?.content,
+          window.location.href,
+        ];
+        let id: string | undefined;
+        for (const c of candidates) {
+          if (!c) continue;
+          const m = c.match(/profile\.php\?id=(\d{5,20})/) || c.match(/fb:\/\/(?:profile|page)\/(\d{5,20})/);
+          if (m) { id = m[1]; break; }
+        }
+
+        // Fall back to any "Message"/m.me link on the profile — which also
+        // happens to be exactly the Messenger thread ID we actually need.
+        if (!id) {
+          const links = Array.from(document.querySelectorAll("a[href]")) as HTMLAnchorElement[];
+          for (const a of links) {
+            const href = a.href || "";
+            const m = href.match(/\/messages\/t\/(\d{5,20})/) || href.match(/m\.me\/(\d{5,20})/) || href.match(/[?&]fbid=(\d{5,20})/);
+            if (m) { id = m[1]; break; }
+          }
+        }
+
+        // Last resort: embedded page data.
+        if (!id) {
+          const scripts = Array.from(document.querySelectorAll("script"));
+          for (const s of scripts) {
+            const t = s.textContent ?? "";
+            const m = t.match(/"entity_id"\s*:\s*"(\d{5,20})"/) || t.match(/"profile_id"\s*:\s*"?(\d{5,20})"?/);
+            if (m) { id = m[1]; break; }
+          }
+        }
+
+        const ogTitle = (document.querySelector('meta[property="og:title"]') as HTMLMetaElement | null)?.content;
+        const name = (ogTitle || document.title.replace(/\s*\|\s*Facebook.*$/i, "")).trim();
+        return { id, name: name || undefined };
+      });
+
+      if (!result.id) {
+        return { error: "Không tìm thấy ID trên trang này qua phiên đăng nhập. Vui lòng dán ID Facebook (dạng số) trực tiếp." };
+      }
+      return result;
+    } catch (err: any) {
+      return { error: err?.message ?? "Không tra được ID qua phiên đăng nhập." };
+    } finally {
+      // Don't leave the shared bot's page stranded on a random profile —
+      // the poll loop expects to find itself on the inbox.
+      try {
+        await page.goto("https://www.facebook.com/messages/", { waitUntil: "domcontentloaded", timeout: 15000 });
+      } catch {}
+    }
+  }
 }

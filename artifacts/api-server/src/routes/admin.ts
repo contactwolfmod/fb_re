@@ -16,6 +16,7 @@ import {
   listUserAiConfigs,
 } from "../lib/adminAuth";
 import { botState } from "../bot/state";
+import { resolveProfileIdViaBot } from "../bot/facebook";
 import { icon } from "../lib/icons";
 import { resolveFacebookId } from "../lib/facebookId";
 
@@ -410,7 +411,7 @@ router.get("/admin", requireAdmin, async (req: Request, res: Response) => {
                   <div>
                     <label>${icon("facebook", 12)} Link Facebook người thuê</label>
                     <input name="facebookLink" required placeholder="https://facebook.com/ten-nguoi-dung">
-                    <div class="hint">Tên khách hàng lấy tự động từ Facebook. Nếu tra cứu lỗi, dán thẳng ID Facebook (dạng số).</div>
+                    <div class="hint">Cần bật bot Messenger để tra ID/tên tự động qua phiên đăng nhập. Nếu bot đang tắt hoặc tra lỗi, dán thẳng ID Facebook (dạng số).</div>
                   </div>
                   <div><label>Mật khẩu</label><input name="password" type="password" required minlength="8" placeholder="Tối thiểu 8 ký tự"></div>
                   <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tạo khách hàng và link con</button></div>
@@ -470,18 +471,44 @@ router.post("/admin/users/create", requireAdmin, async (req: Request, res: Respo
   const { facebookLink, password } = req.body as { facebookLink?: string; password?: string };
   if (!password || password.length < 8) { res.status(400).send("Mật khẩu tối thiểu 8 ký tự."); return; }
   if (!facebookLink?.trim()) { res.status(400).send("Vui lòng nhập link Facebook người thuê."); return; }
+  const link = facebookLink.trim();
 
-  const resolved = await resolveFacebookId(facebookLink);
-  if (!resolved.ok || !resolved.id) { res.status(400).send(resolved.error ?? "Không tra cứu được ID Facebook."); return; }
+  let resolvedId: string | undefined;
+  let resolvedName: string | undefined;
+  let resolveError: string | undefined;
 
-  // Name is best-effort from the lookup API (it may be Cloudflare-blocked or
-  // the caller pasted a bare numeric ID with no link to pull a name from) —
-  // fall back to a generic name rather than blocking customer creation on it.
-  const name = resolved.name || `Khách hàng ${resolved.id}`;
+  // Pure numeric ID or profile.php?id=NNNN resolve instantly — no network call needed.
+  const trivialId = /^\d{5,20}$/.test(link) ? link : link.match(/[?&]id=(\d{5,20})\b/)?.[1];
+  if (trivialId) {
+    resolvedId = trivialId;
+  } else {
+    // Prefer the admin bot's own logged-in session — the one channel that
+    // reliably passes Facebook's bot detection — before falling back to
+    // the (Cloudflare-flaky) third-party lookup service.
+    const viaBot = await resolveProfileIdViaBot(link);
+    if (viaBot.id) {
+      resolvedId = viaBot.id;
+      resolvedName = viaBot.name;
+    } else {
+      const viaHttp = await resolveFacebookId(link);
+      if (viaHttp.ok && viaHttp.id) {
+        resolvedId = viaHttp.id;
+        resolvedName = viaHttp.name;
+      } else {
+        resolveError = viaBot.error ?? viaHttp.error;
+      }
+    }
+  }
+
+  if (!resolvedId) { res.status(400).send(resolveError ?? "Không tra cứu được ID Facebook."); return; }
+
+  // Name is best-effort — fall back to a generic name rather than blocking
+  // customer creation on it.
+  const name = resolvedName || `Khách hàng ${resolvedId}`;
 
   try {
-    await createServiceUser({ id: resolved.id, name, password });
-    await addServiceUserThread(resolved.id, resolved.id);
+    await createServiceUser({ id: resolvedId, name, password });
+    await addServiceUserThread(resolvedId, resolvedId);
     res.redirect("/admin");
   } catch (err: any) {
     res.status(409).send(err?.message ?? "Không tạo được user.");

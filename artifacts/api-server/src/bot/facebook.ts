@@ -73,3 +73,9 @@ export function canAutoRestart(): boolean {
 export function getFacebookApi() {
   return adminEngine.getFacebookApi();
 }
+
+/** Resolve a Facebook profile link to its numeric ID using the admin bot's
+ *  own logged-in session — only works while that bot is running. */
+export function resolveProfileIdViaBot(profileUrl: string) {
+  return adminEngine.resolveProfileId(profileUrl);
+}
