@@ -25,46 +25,46 @@ const router: IRouter = Router();
 function css() {
   return `
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#090b12;color:#e2e8f0;min-height:100vh;padding:24px}
-    .card{background:#121620;border:1px solid #282f43;border-radius:16px;padding:28px;width:100%;max-width:1440px;margin:auto;box-shadow:0 20px 60px #0007}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:22px;border-bottom:1px solid #282f43;margin-bottom:22px}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);display:grid;place-items:center;font-size:20px}.page-title{font-size:1.45rem;font-weight:750;color:#f8fafc}.page-sub{font-size:.82rem;color:#94a3b8;margin-top:3px}.section{padding:24px 0;border-top:1px solid #282f43}.section:first-of-type{border-top:0;padding-top:0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.section-title{font-size:1rem;font-weight:700;color:#f8fafc}.section-note{font-size:.78rem;color:#64748b}
-    .dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}.metric{background:linear-gradient(145deg,#171c2a,#11151f);border:1px solid #29324a;border-radius:13px;padding:16px}.metric-label{font-size:.75rem;color:#94a3b8}.metric-value{font-size:1.65rem;font-weight:750;color:#f8fafc;margin-top:7px}.metric-foot{font-size:.72rem;color:#64748b;margin-top:4px}.panel{background:#0d1018;border:1px solid #252d40;border-radius:13px;padding:18px}
-    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.span-all{grid-column:1/-1}.table-wrap{overflow-x:auto;border:1px solid #252d40;border-radius:12px;background:#0d1018} @media(max-width:900px){body{padding:12px}.card{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:560px){.topbar{align-items:flex-start;flex-direction:column}.dashboard-grid,.form-grid{grid-template-columns:1fr}.card{padding:14px}}
+    body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#0f0f1e;color:#e2e8f0;min-height:100vh;padding:24px;background-image:radial-gradient(circle at top left,rgba(233,69,96,.14),transparent 28%),radial-gradient(circle at 80% 0%,rgba(56,189,248,.08),transparent 24%)}
+    .card{background:rgba(18,18,42,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:20px;padding:28px;width:100%;max-width:1440px;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:22px}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#e94560,#c23152);display:grid;place-items:center;font-size:20px;box-shadow:0 0 24px rgba(233,69,96,.35)}.page-title{font-size:1.45rem;font-weight:750;color:#f8fafc}.page-sub{font-size:.82rem;color:#94a3b8;margin-top:3px}.section{padding:24px 0;border-top:1px solid rgba(255,255,255,.06)}.section:first-of-type{border-top:0;padding-top:0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.section-title{font-size:1rem;font-weight:700;color:#f8fafc}.section-note{font-size:.78rem;color:#64748b}
+    .dashboard-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}.metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;transition:border-color .2s,box-shadow .2s}.metric:hover{border-color:rgba(233,69,96,.3);box-shadow:0 0 30px rgba(233,69,96,.1)}.metric-label{font-size:.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em}.metric-value{font-size:1.65rem;font-weight:750;color:#f8fafc;margin-top:7px}.metric-foot{font-size:.72rem;color:#64748b;margin-top:4px}.panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px}
+    .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.span-all{grid-column:1/-1}.table-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.025)} @media(max-width:900px){body{padding:12px}.card{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}} @media(max-width:560px){.topbar{align-items:flex-start;flex-direction:column}.dashboard-grid,.form-grid{grid-template-columns:1fr}.card{padding:14px}}
 
     h1{font-size:1.4rem;font-weight:700;margin-bottom:.25rem;color:#f1f5f9}
     .sub{color:#94a3b8;font-size:.85rem;margin-bottom:1.5rem}
     label{display:block;font-size:.8rem;color:#94a3b8;margin-bottom:.35rem;font-weight:500}
-    input,select{width:100%;padding:.6rem .85rem;background:#252836;border:1px solid #3a3f5c;border-radius:8px;color:#e2e8f0;font-size:.9rem;outline:none;margin-bottom:1rem}
-    input:focus,select:focus{border-color:#6366f1}
-    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.25rem;border-radius:8px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;transition:opacity .15s}
-    .btn-primary{background:#6366f1;color:#fff}.btn-primary:hover{opacity:.85}
+    input,select{width:100%;padding:.6rem .85rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:.9rem;outline:none;margin-bottom:1rem}
+    input:focus,select:focus{border-color:#e94560;box-shadow:0 0 12px rgba(233,69,96,.2)}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.25rem;border-radius:8px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;transition:all .2s}
+    .btn-primary{background:linear-gradient(135deg,#e94560,#c23152);color:#fff;box-shadow:0 4px 18px rgba(233,69,96,.3)}.btn-primary:hover{opacity:.9;box-shadow:0 4px 24px rgba(233,69,96,.45)}
     .btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{opacity:.85}
-    .btn-ghost{background:#252836;color:#94a3b8;border:1px solid #3a3f5c}.btn-ghost:hover{color:#e2e8f0}
-    .alert-err{background:#450a0a;border:1px solid #7f1d1d;color:#fca5a5;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem}
-    .alert-ok{background:#052e16;border:1px solid #14532d;color:#86efac;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem}
+    .btn-ghost{background:rgba(255,255,255,.04);color:#94a3b8;border:1px solid rgba(255,255,255,.1)}.btn-ghost:hover{color:#e2e8f0;border-color:rgba(233,69,96,.3)}
+    .alert-err{background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.25);color:#fca5a5;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem}
+    .alert-ok{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#86efac;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem}
     table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:1rem}
-    th{text-align:left;color:#64748b;font-weight:600;padding:.5rem .75rem;border-bottom:1px solid #252836}
-    td{padding:.6rem .75rem;border-bottom:1px solid #1a1d27;color:#cbd5e1;vertical-align:top}
-    tr:hover td{background:#1e2130}
+    th{text-align:left;color:#64748b;font-weight:600;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.06);text-transform:uppercase;letter-spacing:.06em;font-size:.72rem}
+    td{padding:.6rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);color:#cbd5e1;vertical-align:top}
+    tr:hover td{background:rgba(233,69,96,.04)}
     .badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-size:.7rem;font-weight:600}
-    .badge-ok{background:#052e16;color:#4ade80;border:1px solid #166534}
-    .badge-used{background:#1c1917;color:#78716c;border:1px solid #44403c}
-    .badge-exp{background:#450a0a;color:#f87171;border:1px solid #7f1d1d}
+    .badge-ok{background:rgba(52,211,153,.1);color:#4ade80;border:1px solid rgba(52,211,153,.25)}
+    .badge-used{background:rgba(255,255,255,.04);color:#78716c;border:1px solid rgba(255,255,255,.1)}
+    .badge-exp{background:rgba(233,69,96,.1);color:#f87171;border:1px solid rgba(233,69,96,.25)}
     .stat{display:flex;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
-    .stat-box{flex:1;min-width:120px;background:#252836;border:1px solid #3a3f5c;border-radius:10px;padding:.85rem 1rem}
-    .stat-label{font-size:.7rem;color:#64748b;margin-bottom:.3rem}
+    .stat-box{flex:1;min-width:120px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.85rem 1rem;transition:border-color .2s,box-shadow .2s}.stat-box:hover{border-color:rgba(233,69,96,.3);box-shadow:0 0 20px rgba(233,69,96,.08)}
+    .stat-label{font-size:.7rem;color:#64748b;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em}
     .stat-val{font-size:1.3rem;font-weight:700;color:#f1f5f9}
-    .sep{height:1px;background:#2d3148;margin:1.5rem 0}
-    .link-box{background:#252836;border:1px solid #3a3f5c;border-radius:8px;padding:.6rem 1rem;font-size:.78rem;color:#818cf8;word-break:break-all;margin-top:.5rem}
+    .sep{height:1px;background:rgba(255,255,255,.06);margin:1.5rem 0}
+    .link-box{background:rgba(233,69,96,.06);border:1px solid rgba(233,69,96,.18);border-radius:8px;padding:.6rem 1rem;font-size:.78rem;color:#e94560;word-break:break-all;margin-top:.5rem}
     .mono{font-family:monospace}
-    /* Wide 9Router-style dashboard */
-    body{padding:0;background-color:#171717;background-image:linear-gradient(#2a241f66 1px,transparent 1px),linear-gradient(90deg,#2a241f66 1px,transparent 1px);background-size:48px 48px}.admin-shell{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}.sidebar{background:#202020;border-right:1px solid #303030;padding:28px 16px;position:sticky;top:0;height:100vh}.side-brand{font-size:1.25rem;font-weight:800;color:#f5f5f5;margin:0 10px 30px}.side-brand b{display:block;color:#aaa;font-size:.75rem;margin-top:4px}.nav-item{display:block;padding:12px 14px;border-radius:9px;color:#aeb4c0;text-decoration:none;font-weight:650;margin:5px 0}.nav-item.active{background:#3c2b26;color:#f26a45}.nav-label{font-size:.72rem;color:#777d88;letter-spacing:.08em;margin:24px 14px 8px}.admin-main{padding:32px 48px;max-width:1600px;width:100%}.card{max-width:none;margin:0;background:#202020;border-color:#303030;box-shadow:none}.topbar{border-color:#343434}.brand-mark{background:#e75e3d}.dashboard-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.metric,.panel,.table-wrap{background:#242424;border-color:#343434}.metric{border-radius:14px}.btn-primary{background:#e75e3d}.btn-ghost{background:#2b2b2b;border-color:#454545}.section{border-color:#343434}@media(max-width:900px){.admin-shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;padding:18px}.nav-item{display:inline-block}.admin-main{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}}
+    /* WolfMod sidebar dashboard */
+    body{padding:0;background-color:#0f0f1e;background-image:radial-gradient(circle at top left,rgba(233,69,96,.14),transparent 28%),radial-gradient(circle at 80% 0%,rgba(56,189,248,.08),transparent 24%)}.admin-shell{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}.sidebar{background:rgba(12,12,28,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-right:1px solid rgba(255,255,255,.06);padding:28px 16px;position:sticky;top:0;height:100vh}.side-brand{font-size:1.25rem;font-weight:800;color:#f5f5f5;margin:0 10px 30px}.side-brand b{display:block;color:#e94560;font-size:.75rem;margin-top:4px;letter-spacing:.06em}.nav-item{display:block;padding:12px 14px;border-radius:10px;color:#aeb4c0;text-decoration:none;font-weight:650;margin:5px 0;transition:all .2s}.nav-item:hover{background:rgba(233,69,96,.06);color:#f8fafc}.nav-item.active{background:rgba(233,69,96,.12);color:#e94560;box-shadow:0 0 16px rgba(233,69,96,.1)}.nav-label{font-size:.72rem;color:#64748b;letter-spacing:.1em;margin:24px 14px 8px;text-transform:uppercase}.admin-main{padding:32px 48px;max-width:1600px;width:100%}.card{max-width:none;margin:0;background:rgba(18,18,42,.75);backdrop-filter:blur(16px);border-color:rgba(233,69,96,.12);box-shadow:0 20px 60px rgba(0,0,0,.4)}.topbar{border-color:rgba(255,255,255,.06)}.brand-mark{background:linear-gradient(135deg,#e94560,#c23152);box-shadow:0 0 24px rgba(233,69,96,.35)}.dashboard-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.metric,.panel,.table-wrap{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08)}.metric{border-radius:14px}.btn-primary{background:linear-gradient(135deg,#e94560,#c23152);box-shadow:0 4px 18px rgba(233,69,96,.3)}.btn-ghost{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}.section{border-color:rgba(255,255,255,.06)}@media(max-width:900px){.admin-shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;padding:18px}.nav-item{display:inline-block}.admin-main{padding:18px}.dashboard-grid{grid-template-columns:repeat(2,1fr)}}
   `;
 }
 
 function layout(title: string, body: string) {
   return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${title} — Bot Admin</title>
+  <title>${title} — WolfMod Admin</title>
   <style>${css()}</style>
 </head><body>${body}</body></html>`;
 }
@@ -196,19 +196,19 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
 
   res.setHeader("Content-Type", "text/html;charset=utf-8");
   res.send(layout("Admin Dashboard", `
-    <div class="admin-shell"><aside class="sidebar"><div class="side-brand">Bot Router<b>CONTROL PANEL</b></div><a class="nav-item active" href="/admin">▦ Dashboard</a><a class="nav-item" href="#customers">♙ Khach hang</a><a class="nav-item" href="#links">↗ Gemini links</a><a class="nav-item" href="#accounts">◇ AI Accounts</a><div class="nav-label">SYSTEM</div><a class="nav-item" href="/">⌂ Landing page</a></aside><main class="admin-main"><div class="card">
+    <div class="admin-shell"><aside class="sidebar"><div class="side-brand">WolfMod<b>ADMIN PANEL</b></div><a class="nav-item active" href="/admin">◆ Dashboard</a><a class="nav-item" href="#customers">♙ Khach hang</a><a class="nav-item" href="#links">↗ Gemini links</a><a class="nav-item" href="#accounts">◇ AI Accounts</a><div class="nav-label">SYSTEM</div><a class="nav-item" href="/">⌂ Landing page</a></aside><main class="admin-main"><div class="card">
       <header class="topbar">
-        <div class="brand"><div class="brand-mark">◆</div><div><div class="page-title">Trung tam quan tri</div><div class="page-sub">Quan ly khach hang, ket noi Gemini va Facebook Bot</div></div></div>
+        <div class="brand"><div class="brand-mark">◆</div><div><div class="page-title">WolfMod Admin</div><div class="page-sub">Quan ly khach hang, ket noi Gemini va Facebook Bot</div></div></div>
         <form method="POST" action="/admin/logout"><button class="btn btn-ghost">Dang xuat</button></form>
       </header>
       <div class="dashboard-grid">
         <div class="metric"><div class="metric-label">Tong khach hang</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con da cap phep</div></div>
         <div class="metric"><div class="metric-label">Dang hoat dong</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tai khoan dang khoa</div></div>
-        <div class="metric"><div class="metric-label">Da ket noi Gemini</div><div class="metric-value" style="color:#818cf8">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
+        <div class="metric"><div class="metric-label">Da ket noi Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
         <div class="metric"><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.1rem;padding-top:7px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhan da xu ly</div></div>
       </div>
       <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-        <a href="/connect/gemini" class="btn btn-primary" style="background:linear-gradient(135deg,#4285f4,#34a853)">&#x1F1EC;&#x1F1F4; Ket noi Gemini (Admin)</a>
+        <a href="/connect/gemini" class="btn btn-primary">&#x1F1EC;&#x1F1F4; Ket noi Gemini (Admin)</a>
         <a href="/" class="btn btn-ghost">Landing page</a>
       </div>
       ${alerts}
