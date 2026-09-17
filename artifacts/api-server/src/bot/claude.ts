@@ -155,26 +155,43 @@ async function ensureGeminiCodeAssistReady(accessToken: string, signal?: AbortSi
   const cached = geminiSetupCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.projectId;
 
-  const loadReq = {
-    metadata: GEMINI_CLIENT_METADATA,
-  };
-  const loadRes = await postCodeAssist<any>(accessToken, "loadCodeAssist", loadReq, signal);
+  let loadRes: any;
+  try {
+    const loadReq = {
+      metadata: GEMINI_CLIENT_METADATA,
+    };
+    loadRes = await postCodeAssist<any>(accessToken, "loadCodeAssist", loadReq, signal);
+  } catch (err: any) {
+    // Token expired or invalid; throw clear error
+    if (err.status === 401 || err.message?.includes("unauthenticated")) {
+      throw new Error("Token Google Gemini hết hạn. Hãy kết nối lại Gemini từ trang cài đặt.");
+    }
+    if (err.status === 404 || err.message?.includes("not found")) {
+      throw new Error("Tài khoản Gemini chưa được khởi tạo. Hãy kết nối Google lại hoặc kiểm tra xem tài khoản có hỗ trợ Antigravity không.");
+    }
+    throw err;
+  }
+
   let projectId = loadRes?.cloudaicompanionProject as string | undefined;
 
   if (!projectId) {
     const freeTier = (loadRes?.allowedTiers ?? []).find((t: any) => t?.id === "FREE" || t?.isDefault) ?? loadRes?.currentTier;
     const tierId = freeTier?.id ?? "FREE";
-    const onboardRes = await postCodeAssist<any>(accessToken, "onboardUser", {
-      tierId,
-      cloudaicompanionProject: undefined,
-      metadata: GEMINI_CLIENT_METADATA,
-    }, signal);
-    projectId = onboardRes?.response?.cloudaicompanionProject?.id || onboardRes?.cloudaicompanionProject?.id;
+    try {
+      const onboardRes = await postCodeAssist<any>(accessToken, "onboardUser", {
+        tierId,
+        cloudaicompanionProject: undefined,
+        metadata: GEMINI_CLIENT_METADATA,
+      }, signal);
+      projectId = onboardRes?.response?.cloudaicompanionProject?.id || onboardRes?.cloudaicompanionProject?.id;
+    } catch (err: any) {
+      throw new Error(`Khởi tạo Gemini thất bại: ${err.message || "unknown error"}`);
+    }
   }
 
   if (!projectId) {
     const reason = (loadRes?.ineligibleTiers ?? []).map((t: any) => t?.reasonMessage).filter(Boolean).join("; ");
-    throw new Error(reason || "Gemini Code Assist chưa sẵn sàng cho tài khoản này.");
+    throw new Error(reason || "Gemini Code Assist chưa sẵn sàng cho tài khoản này. Tài khoản Google của bạn có thể không đủ điều kiện.");
   }
 
   geminiSetupCache.set(cacheKey, { projectId, expiresAt: Date.now() + 30 * 60_000 });

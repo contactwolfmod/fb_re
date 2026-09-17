@@ -42,12 +42,8 @@ export const userTokensTable = pgTable("user_tokens", {
   redirectUrl: text("redirect_url").notNull(),
 });
 
-// ── Per-owner AI config ─────────────────────────────────────────────────────
-// Keyed by "ownerKey": a service user's ID for the self-service flow, or a
-// raw FB thread ID for the legacy one-off connect-link flow.
-// When baseUrl is set, the bot uses that custom OpenAI-compatible endpoint
-// with apiKey stored in accessToken. When baseUrl is null/empty, the bot
-// treats accessToken as a Google OAuth token and uses GEMINI_BASE_URL.
+// ── Per-owner AI config (deprecated: single account per owner) ──────────────
+// Kept for backward compat. New flow uses userAiAccountsTable below.
 export const userAiConfigsTable = pgTable("user_ai_configs", {
   ownerKey: text("owner_key").primaryKey(),
   accessToken: text("access_token").notNull(),
@@ -57,4 +53,45 @@ export const userAiConfigsTable = pgTable("user_ai_configs", {
   baseUrl: text("base_url"),
   providerLabel: text("provider_label"),
   connectedAt: bigint("connected_at", { mode: "number" }).notNull(),
+});
+
+// ── Per-owner Multiple AI Accounts (new flow) ──────────────────────────────
+// Hỗ trợ nhiều tài khoản AI (Gemini, ChatGPT, Claude, ...) cho mỗi owner.
+// ownerKey: service user ID hoặc FB thread ID (như userAiConfigsTable)
+// providerId: dạng "gemini", "openai", "claude", "openrouter", etc.
+// accountName: tên account do khách đặt (e.g. "Gemini Main", "ChatGPT Premium")
+// accessToken: OAuth token (Gemini) hoặc API key (ChatGPT, Claude, ...)
+// refreshToken: chỉ cho OAuth providers (Gemini)
+// tokenExpiry: timestamp hết hạn token
+// model: mô hình mặc định cho account này (e.g. "gemini-3.8-flash", "gpt-4o")
+// baseUrl: nếu custom OpenAI-compatible endpoint, nếu không để null
+// quotaUsed: số token/credits đã dùng (tracking usage)
+// quotaLimit: giới hạn quota mỗi tháng (0 = unlimited)
+// quotaResetAt: timestamp reset quota hàng tháng
+// isActive: account đang kích hoạt không (khách có thể pause account)
+// createdAt: khi được thêm vào
+export const userAiAccountsTable = pgTable("user_ai_accounts", {
+  id: text("id").primaryKey(), // "ownerKey:providerId:accountName"
+  ownerKey: text("owner_key").notNull(),
+  providerId: text("provider_id").notNull(), // "gemini", "openai", "claude", etc.
+  accountName: text("account_name").notNull(), // người dùng tự đặt tên
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: bigint("token_expiry", { mode: "number" }),
+  model: text("model").notNull(),
+  baseUrl: text("base_url"),
+  quotaUsed: bigint("quota_used", { mode: "number" }).notNull().default(0),
+  quotaLimit: bigint("quota_limit", { mode: "number" }).notNull().default(0), // 0 = unlimited
+  quotaResetAt: bigint("quota_reset_at", { mode: "number" }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// ── Per-owner Active AI Account (which account to use) ──────────────────────
+// ownerKey chỉ trỏ tới 1 account đang sử dụng ở userAiAccountsTable.id
+// Khách có thể thay đổi account nào đang dùng từ giao diện web.
+export const userAiActiveAccountsTable = pgTable("user_ai_active_accounts", {
+  ownerKey: text("owner_key").primaryKey(),
+  activeAccountId: text("active_account_id").notNull(), // refers to userAiAccountsTable.id
+  changedAt: bigint("changed_at", { mode: "number" }).notNull(),
 });
