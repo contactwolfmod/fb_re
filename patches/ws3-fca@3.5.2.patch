@@ -1,0 +1,25 @@
+diff --git a/src/utils/clients.js b/src/utils/clients.js
+index 548b15f50afbd6d15a733ea785e0922251453dde..fd7a3f21b4ffe6c4d9838459857b91ceb59420f4 100644
+--- a/src/utils/clients.js	
++++ b/src/utils/clients.js	
+@@ -146,15 +146,12 @@ function saveCookies(jar) {
+  */
+ function getAccessFromBusiness(jar, Options) {
+   return async function (res) {
++    // Patched: this referenced a "./request" module that doesn't exist in
++    // this package (dead code — unused anywhere else in ws3-fca), which
++    // broke esbuild's static bundling. Left as a no-op since it was never
++    // actually reachable.
+     const html = res ? res.body : null;
+-    const { get } = require("./request");
+-    try {
+-        const businessRes = await get("https://business.facebook.com/content_management", jar, null, Options, null, { noRef: true });
+-        const token = /"accessToken":"([^.]+)","clientID":/g.exec(businessRes.body)[1];
+-        return [html, token];
+-    } catch (e) {
+-        return [html, null];
+-    }
++    return [html, null];
+   };
+ }
+ 

@@ -30,7 +30,11 @@ async function buildAll() {
     external: [
       "*.node",
       "fca-unofficial",
-      "@xaviabot/fca-unofficial",
+      // Pulled in transitively via ws3-fca's cookie-jar HTTP stack
+      // (http-cookie-agent). Only required at runtime behind an
+      // `async_UNSTABLE` flag we never set, so it's never actually loaded —
+      // but esbuild's static bundler still needs it excluded to build.
+      "deasync",
       "sharp",
       "better-sqlite3",
       "sqlite3",

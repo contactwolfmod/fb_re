@@ -161,4 +161,10 @@ overrides:
   esbuild: "0.27.3"
 
 allowBuilds:
-  es5-ext: set this to true or false
+  # Reviewed: es5-ext's postinstall script only prints an anti-war message
+  # to the console when the system timezone is Russian; no filesystem or
+  # network side effects.
+  es5-ext: true
+
+patchedDependencies:
+  ws3-fca@3.5.2: patches/ws3-fca@3.5.2.patch
