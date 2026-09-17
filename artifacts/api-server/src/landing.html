@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#06080f;--card:rgba(15,18,30,.72);--border:rgba(99,102,241,.12);--accent:#6366f1;--accent2:#a78bfa;--text:#e8ecf4;--muted:#7b8aa8;--glass:rgba(255,255,255,.04)}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden}
 .bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none}
 .bg-mesh .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.3;animation:drift 18s ease-in-out infinite alternate}
 .orb-1{width:600px;height:600px;background:radial-gradient(circle,#6366f1,transparent 70%);top:-10%;left:-8%}
@@ -23,7 +23,9 @@ nav.scrolled{box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;transition:color .2s}
 .nav-links a:hover{color:#fff}
 .nav-cta{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff!important;padding:.5rem 1.2rem;border-radius:9px;font-weight:700;font-size:.85rem!important;box-shadow:0 0 20px rgba(99,102,241,.3);transition:transform .15s,box-shadow .15s}
-.nav-cta:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(99,102,241,.5)}.hero{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:3rem;padding:7rem clamp(2rem,6vw,6rem) 4rem}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(99,102,241,.5)}
+.lang-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;padding:.35rem .7rem;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
+.lang-btn:hover{background:rgba(255,255,255,.15)}.hero{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:3rem;padding:7rem clamp(2rem,6vw,6rem) 4rem}
 .hero-text{max-width:580px}
 .hero-tag{display:inline-block;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(167,139,250,.15));border:1px solid rgba(99,102,241,.25);border-radius:99px;padding:.4rem 1.1rem;font-size:.78rem;font-weight:600;color:var(--accent2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:1.5rem;animation:fadeUp .8s .1s both}
 .hero-tag .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:8px;animation:pulse-dot 2s infinite}
@@ -36,7 +38,7 @@ nav.scrolled{box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .hero-visual{position:relative;display:flex;align-items:center;justify-content:center;animation:fadeUp .9s .4s both}
 .hero-img-wrap{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(99,102,241,.15);max-width:520px;width:100%}
 .hero-img-wrap img{width:100%;display:block}
-.hero-img-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,var(--bg));pointer-events:none}
+.hero-img-wrap::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,var(--bg));pointer-events:none}
 .float-card{position:absolute;background:var(--card);backdrop-filter:blur(16px);border:1px solid rgba(99,102,241,.18);border-radius:14px;padding:14px 18px;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:float 5s ease-in-out infinite}
 .float-card-1{bottom:-20px;left:-30px}.float-card-2{top:10%;right:-25px;animation-delay:-2.5s}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
@@ -45,14 +47,14 @@ nav.scrolled{box-shadow:0 4px 30px rgba(0,0,0,.4)}
 .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 1.8rem;border-radius:12px;font-weight:700;font-size:.95rem;cursor:pointer;text-decoration:none;transition:all .2s;border:none;position:relative;overflow:hidden}
 .btn-glow{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 30px rgba(99,102,241,.35)}
 .btn-glow:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(99,102,241,.5)}
-.btn-glow::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(45deg,transparent,rgba(255,255,255,.08),transparent);transform:rotate(45deg);transition:left .6s}
+.btn-glow::before{content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(45deg,transparent,rgba(255,255,255,.08),transparent);transform:rotate(45deg);transition:left .6s}
 .btn-glow:hover::before{left:100%}
 .btn-glass{background:var(--glass);color:var(--text);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px)}
-.btn-glass:hover{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.06)}
-section{position:relative;z-index:1;padding:6rem clamp(2rem,6vw,6rem)}
+.btn-glass:hover{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.06)}section{position:relative;z-index:1;padding:6rem clamp(2rem,6vw,6rem)}
 .sec-label{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent2);margin-bottom:.8rem}
 .sec-title{font-size:clamp(1.6rem,4vw,2.6rem);font-weight:900;line-height:1.15;margin-bottom:1rem;letter-spacing:-.02em}
-.sec-sub{color:var(--muted);font-size:1rem;max-width:520px;margin-bottom:3rem}.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
+.sec-sub{color:var(--muted);font-size:1rem;max-width:520px;margin-bottom:3rem}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
 .feat{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:16px;padding:2rem;transition:border-color .3s,transform .3s,box-shadow .3s}
 .feat:hover{border-color:rgba(99,102,241,.35);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.3)}
 .feat-img{width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:1.2rem}
@@ -72,7 +74,7 @@ section{position:relative;z-index:1;padding:6rem clamp(2rem,6vw,6rem)}
 .prov h4{font-size:.92rem;font-weight:700}.prov p{font-size:.78rem;color:var(--muted)}
 .badge-s{display:inline-block;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.2);color:#fbbf24;border-radius:4px;font-size:.6rem;font-weight:700;padding:.1rem .4rem;margin-left:.4rem;vertical-align:middle}
 .access-panel{background:linear-gradient(145deg,rgba(99,102,241,.08),rgba(167,139,250,.05));border:1px solid rgba(99,102,241,.18);border-radius:20px;padding:2.5rem;max-width:480px;position:relative;overflow:hidden}
-.access-panel::before{content:'';position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(99,102,241,.12),transparent 70%);pointer-events:none}
+.access-panel::before{content:"";position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(99,102,241,.12),transparent 70%);pointer-events:none}
 .access-panel h3{font-size:1.15rem;font-weight:800;margin-bottom:.4rem}
 .access-panel .hint{font-size:.82rem;color:var(--muted);margin-bottom:1.2rem}
 .input-row{display:flex;gap:.6rem}
@@ -86,8 +88,7 @@ section{position:relative;z-index:1;padding:6rem clamp(2rem,6vw,6rem)}
 .cta-block p{color:var(--muted);margin-bottom:2rem;font-size:1rem}
 footer{text-align:center;padding:2.5rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);position:relative;z-index:1}
 footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:hover{color:var(--accent2)}
-.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s,transform .7s}
-.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s,transform .7s}.reveal.visible{opacity:1;transform:translateY(0)}
 @media(max-width:900px){.hero{grid-template-columns:1fr;text-align:center;padding-top:8rem}.hero-text{max-width:100%}.hero-desc{margin-left:auto;margin-right:auto}.hero-actions{justify-content:center}.hero-visual{order:-1;margin-bottom:1rem}.hero-img-wrap{max-width:400px;margin:auto}.float-card-1{left:0;bottom:-10px}.float-card-2{right:0;top:5%}.access-panel{max-width:100%}}
 @media(max-width:500px){.nav-links .hide-m{display:none}.input-row{flex-direction:column}.float-card{display:none}}
 </style>
@@ -98,68 +99,69 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
 <nav id="nav">
   <a class="logo" href="/">Wolf<b>Mod</b></a>
   <div class="nav-links">
-    <a href="#tinh-nang" class="hide-m">Tinh nang</a>
-    <a href="#huong-dan" class="hide-m">Huong dan</a>
+    <a href="#tinh-nang" class="hide-m" data-i18n="nav_features">Tính năng</a>
+    <a href="#huong-dan" class="hide-m" data-i18n="nav_guide">Hướng dẫn</a>
+    <button class="lang-btn" id="langToggle" onclick="toggleLang()">EN</button>
     <a href="/admin" class="nav-cta">Admin Panel</a>
   </div>
 </nav>
 
 <section class="hero">
   <div class="hero-text">
-    <div class="hero-tag"><span class="dot"></span>Dang hoat dong</div>
-    <h1><span>Tu dong tra loi<br>thong minh</span><br>bang AI</h1>
-    <p class="hero-desc">Ket noi Gemini vao Facebook Messenger. Bot phan tich va tra loi moi tin nhan 24/7. User tu dang nhap Google, chon model rieng.</p>
+    <div class="hero-tag"><span class="dot"></span><span data-i18n="hero_tag">Đang hoạt động</span></div>
+    <h1><span data-i18n="hero_h1">Tự động trả lời<br>thông minh</span><br><span data-i18n="hero_h1b">bằng AI</span></h1>
+    <p class="hero-desc" data-i18n="hero_desc">Kết nối Gemini vào Facebook Messenger. Bot phân tích và trả lời mọi tin nhắn 24/7. User tự đăng nhập Google, chọn model riêng.</p>
     <div class="hero-actions">
-      <a href="/admin" class="btn btn-glow">Vao Admin Panel</a>
-      <a href="#truy-cap" class="btn btn-glass">Trang khach hang</a>
+      <a href="/admin" class="btn btn-glow" data-i18n="hero_btn_admin">Vào Admin Panel</a>
+      <a href="#truy-cap" class="btn btn-glass" data-i18n="hero_btn_user">Trang khách hàng</a>
     </div>
   </div>
   <div class="hero-visual">
     <div class="hero-img-wrap">
       <img src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&q=80&auto=format" alt="AI Chat" loading="eager">
     </div>
-    <div class="float-card float-card-1"><div class="fc-label">Xu ly tin nhan</div><div class="fc-val green">24/7</div></div>
-    <div class="float-card float-card-2"><div class="fc-label">Phan hoi</div><div class="fc-val">&lt;1s</div></div>
+    <div class="float-card float-card-1"><div class="fc-label" data-i18n="fc_msg">Xử lý tin nhắn</div><div class="fc-val green">24/7</div></div>
+    <div class="float-card float-card-2"><div class="fc-label" data-i18n="fc_resp">Phản hồi</div><div class="fc-val">&lt;1s</div></div>
   </div>
 </section>
 
 <section id="truy-cap" style="padding-top:0">
   <div class="reveal">
     <div class="access-panel" style="margin:0 auto">
-      <h3>Truy cap trang khach hang</h3>
-      <p class="hint">Nhap ID do admin cung cap de vao trang quan ly rieng — chon model Gemini, test chat, ket noi Google.</p>
+      <h3 data-i18n="access_title">Truy cập trang khách hàng</h3>
+      <p class="hint" data-i18n="access_hint">Nhập ID do admin cung cấp để vào trang quản lý riêng — chọn model Gemini, test chat, kết nối Google.</p>
       <form class="input-row" onsubmit="event.preventDefault();var v=this.uid.value.trim().toLowerCase();if(v)location.href='/u/'+encodeURIComponent(v)">
-        <input name="uid" placeholder="vd: cong-ty-abc" required autocomplete="off" spellcheck="false">
-        <button type="submit">Truy cap</button>
+        <input name="uid" data-i18n-ph="access_ph" placeholder="ví dụ: cong-ty-abc" required autocomplete="off" spellcheck="false">
+        <button type="submit" data-i18n="access_btn">Truy cập</button>
       </form>
     </div>
   </div>
 </section><section id="tinh-nang">
   <div class="reveal">
-    <div class="sec-label">Tinh nang</div>
-    <div class="sec-title">Moi thu de tu dong hoa Messenger</div>
-    <p class="sec-sub">Cai dat trong vai phut. Khong can server rieng, khong can code.</p>
+    <div class="sec-label" data-i18n="feat_label">Tính năng</div>
+    <div class="sec-title" data-i18n="feat_title">Mọi thứ để tự động hóa Messenger</div>
+    <p class="sec-sub" data-i18n="feat_sub">Cài đặt trong vài phút. Không cần server riêng, không cần code.</p>
   </div>
   <div class="features">
     <div class="feat reveal">
       <img class="feat-img" src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80&auto=format" alt="AI" loading="lazy">
-      <h3>AI tu dong phan hoi</h3>
-      <p>Bot phan tich noi dung tin nhan va tra loi tu nhien. Ho tro da ngon ngu, hieu ngu canh hoi thoai.</p>
+      <h3 data-i18n="f1_t">AI tự động phản hồi</h3>
+      <p data-i18n="f1_d">Bot phân tích nội dung tin nhắn và trả lời tự nhiên. Hỗ trợ đa ngôn ngữ, hiểu ngữ cảnh hội thoại.</p>
     </div>
     <div class="feat reveal">
       <img class="feat-img" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80&auto=format" alt="Dashboard" loading="lazy">
-      <h3>Dashboard quan ly</h3>
-      <p>Theo doi tin nhan, trang thai bot, model dang dung. Bat/tat, thay doi cai dat tu admin panel.</p>
+      <h3 data-i18n="f2_t">Dashboard quản lý</h3>
+      <p data-i18n="f2_d">Theo dõi tin nhắn, trạng thái bot, model đang dùng. Bật/tắt, thay đổi cài đặt từ admin panel.</p>
     </div>
     <div class="feat reveal">
       <img class="feat-img" src="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600&q=80&auto=format" alt="Security" loading="lazy">
-      <h3>Bao mat nhieu lop</h3>
-      <p>OAuth Google cho moi user. Token ma hoa phia server. Session rieng biet. Link het han tu dong.</p>
+      <h3 data-i18n="f3_t">Bảo mật nhiều lớp</h3>
+      <p data-i18n="f3_d">OAuth Google cho mỗi user. Token mã hóa phía server. Session riêng biệt. Link hết hạn tự động.</p>
     </div>
     <div class="feat reveal">
       <img class="feat-img" src="https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600&q=80&auto=format" alt="Multi-model" loading="lazy">
-      <h3>User tu chon model</h3>
-      <p>Moi khach hang tu dang nhap Google, chon model Gemini rieng tu danh sach thuc cua tai khoan ho.</p>
+      <h3 data-i18n="f4_t">User tự chọn model</h3>
+      <p data-i18n="f4_d">Mỗi khách hàng tự đăng nhập Google, chọn model Gemini riêng từ danh sách thực của tài khoản họ.</p>
     </div>
   </div>
 </section>
@@ -167,44 +169,107 @@ footer a{color:var(--muted);text-decoration:none;transition:color .15s}footer a:
 <section style="padding-top:0">
   <div class="reveal">
     <div class="sec-label">AI Providers</div>
-    <div class="sec-title">Ket noi AI ban yeu thich</div>
-    <p class="sec-sub">Nhieu nha cung cap AI hang dau. Them moi trong vai giay.</p>
+    <div class="sec-title" data-i18n="prov_title">Kết nối AI bạn yêu thích</div>
+    <p class="sec-sub" data-i18n="prov_sub">Nhiều nhà cung cấp AI hàng đầu. Thêm mới trong vài giây.</p>
   </div>
   <div class="prov-grid reveal">
-    <div class="prov"><div class="prov-logo"><img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini"></div><div><h4>Google Gemini</h4><p>Dang nhap Google OAuth</p></div></div>
+    <div class="prov"><div class="prov-logo"><img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini"></div><div><h4>Google Gemini</h4><p data-i18n="prov_gemini">Đăng nhập Google OAuth</p></div></div>
     <div class="prov"><div class="prov-logo" style="background:#fff;display:flex;align-items:center;justify-content:center"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Anthropic_logo.svg/1200px-Anthropic_logo.svg.png" alt="Claude" style="width:32px;height:32px;object-fit:contain"></div><div><h4>Claude</h4><p>API Key<span class="badge-s">soon</span></p></div></div>
     <div class="prov"><div class="prov-logo" style="background:#fff;display:flex;align-items:center;justify-content:center"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1200px-ChatGPT_logo.svg.png" alt="GPT" style="width:32px;height:32px;object-fit:contain"></div><div><h4>OpenAI GPT</h4><p>API Key<span class="badge-s">soon</span></p></div></div>
   </div>
 </section><section id="huong-dan">
   <div class="reveal">
-    <div class="sec-label">Huong dan</div>
-    <div class="sec-title">Bat dau trong 4 buoc</div>
-    <p class="sec-sub">Toan bo setup khong qua 5 phut.</p>
+    <div class="sec-label" data-i18n="guide_label">Hướng dẫn</div>
+    <div class="sec-title" data-i18n="guide_title">Bắt đầu trong 4 bước</div>
+    <p class="sec-sub" data-i18n="guide_sub">Toàn bộ setup không quá 5 phút.</p>
   </div>
   <div class="steps reveal">
-    <div class="step"><h3>Dang nhap Admin</h3><p>Truy cap /admin, nhap Admin Token do chu so huu he thong cung cap.</p></div>
-    <div class="step"><h3>Tao khach hang</h3><p>Nhap ten, ID, mat khau va FB Thread ID. Khach hang se co trang rieng tai /u/id.</p></div>
-    <div class="step"><h3>User ket noi Gemini</h3><p>Khach hang dang nhap trang cua ho, bam "Dang nhap Google", chon model Gemini tu danh sach.</p></div>
-    <div class="step"><h3>Bot hoat dong</h3><p>Xong. Bot tu dong tra loi moi tin nhan Messenger bang model ma khach hang da chon.</p></div>
+    <div class="step"><h3 data-i18n="s1_t">Đăng nhập Admin</h3><p data-i18n="s1_d">Truy cập /admin, nhập Admin Token do chủ sở hữu hệ thống cung cấp.</p></div>
+    <div class="step"><h3 data-i18n="s2_t">Tạo khách hàng</h3><p data-i18n="s2_d">Nhập tên, ID, mật khẩu và FB Thread ID. Khách hàng sẽ có trang riêng tại /u/id.</p></div>
+    <div class="step"><h3 data-i18n="s3_t">User kết nối Gemini</h3><p data-i18n="s3_d">Khách hàng đăng nhập trang của họ, bấm "Đăng nhập Google", chọn model Gemini từ danh sách.</p></div>
+    <div class="step"><h3 data-i18n="s4_t">Bot hoạt động</h3><p data-i18n="s4_d">Xong. Bot tự động trả lời mọi tin nhắn Messenger bằng model mà khách hàng đã chọn.</p></div>
   </div>
 </section>
 
 <div class="cta-block reveal">
-  <h2>San sang bat dau?</h2>
-  <p>Vao admin panel de cai dat bot cua ban ngay bay gio.</p>
-  <a href="/admin" class="btn btn-glow" style="font-size:1rem;padding:1rem 2.5rem">Vao Admin Panel</a>
+  <h2 data-i18n="cta_title">Sẵn sàng bắt đầu?</h2>
+  <p data-i18n="cta_desc">Vào admin panel để cài đặt bot của bạn ngay bây giờ.</p>
+  <a href="/admin" class="btn btn-glow" style="font-size:1rem;padding:1rem 2.5rem" data-i18n="cta_btn">Vào Admin Panel</a>
 </div>
 
 <footer>
-  <p>WolfMod Bot &bull; <a href="/admin">Admin</a> &bull; Ho tro: Gemini, Claude, GPT</p>
+  <p>WolfMod Bot &bull; <a href="/admin">Admin</a> &bull; <span data-i18n="footer_support">Hỗ trợ:</span> Gemini, Claude, GPT</p>
   <p style="margin-top:.5rem">Built with Express + TypeScript &bull; Deployed on Railway</p>
-</footer>
+</footer><script>
+const T={
+ vi:{
+  nav_features:"T\u00ednh n\u0103ng",nav_guide:"H\u01b0\u1edbng d\u1eabn",
+  hero_tag:"\u0110ang ho\u1ea1t \u0111\u1ed9ng",
+  hero_h1:"T\u1ef1 \u0111\u1ed9ng tr\u1ea3 l\u1eddi<br>th\u00f4ng minh",hero_h1b:"b\u1eb1ng AI",
+  hero_desc:"K\u1ebft n\u1ed1i Gemini v\u00e0o Facebook Messenger. Bot ph\u00e2n t\u00edch v\u00e0 tr\u1ea3 l\u1eddi m\u1ecdi tin nh\u1eafn 24/7. User t\u1ef1 \u0111\u0103ng nh\u1eadp Google, ch\u1ecdn model ri\u00eang.",
+  hero_btn_admin:"V\u00e0o Admin Panel",hero_btn_user:"Trang kh\u00e1ch h\u00e0ng",
+  fc_msg:"X\u1eed l\u00fd tin nh\u1eafn",fc_resp:"Ph\u1ea3n h\u1ed3i",
+  access_title:"Truy c\u1eadp trang kh\u00e1ch h\u00e0ng",
+  access_hint:"Nh\u1eadp ID do admin cung c\u1ea5p \u0111\u1ec3 v\u00e0o trang qu\u1ea3n l\u00fd ri\u00eang \u2014 ch\u1ecdn model Gemini, test chat, k\u1ebft n\u1ed1i Google.",
+  access_ph:"v\u00ed d\u1ee5: cong-ty-abc",access_btn:"Truy c\u1eadp",
+  feat_label:"T\u00ednh n\u0103ng",feat_title:"M\u1ecdi th\u1ee9 \u0111\u1ec3 t\u1ef1 \u0111\u1ed9ng h\u00f3a Messenger",feat_sub:"C\u00e0i \u0111\u1eb7t trong v\u00e0i ph\u00fat. Kh\u00f4ng c\u1ea7n server ri\u00eang, kh\u00f4ng c\u1ea7n code.",
+  f1_t:"AI t\u1ef1 \u0111\u1ed9ng ph\u1ea3n h\u1ed3i",f1_d:"Bot ph\u00e2n t\u00edch n\u1ed9i dung tin nh\u1eafn v\u00e0 tr\u1ea3 l\u1eddi t\u1ef1 nhi\u00ean. H\u1ed7 tr\u1ee3 \u0111a ng\u00f4n ng\u1eef, hi\u1ec3u ng\u1eef c\u1ea3nh h\u1ed9i tho\u1ea1i.",
+  f2_t:"Dashboard qu\u1ea3n l\u00fd",f2_d:"Theo d\u00f5i tin nh\u1eafn, tr\u1ea1ng th\u00e1i bot, model \u0111ang d\u00f9ng. B\u1eadt/t\u1eaft, thay \u0111\u1ed5i c\u00e0i \u0111\u1eb7t t\u1eeb admin panel.",
+  f3_t:"B\u1ea3o m\u1eadt nhi\u1ec1u l\u1edbp",f3_d:"OAuth Google cho m\u1ed7i user. Token m\u00e3 h\u00f3a ph\u00eda server. Session ri\u00eang bi\u1ec7t. Link h\u1ebft h\u1ea1n t\u1ef1 \u0111\u1ed9ng.",
+  f4_t:"User t\u1ef1 ch\u1ecdn model",f4_d:"M\u1ed7i kh\u00e1ch h\u00e0ng t\u1ef1 \u0111\u0103ng nh\u1eadp Google, ch\u1ecdn model Gemini ri\u00eang t\u1eeb danh s\u00e1ch th\u1ef1c c\u1ee7a t\u00e0i kho\u1ea3n h\u1ecd.",
+  prov_title:"K\u1ebft n\u1ed1i AI b\u1ea1n y\u00eau th\u00edch",prov_sub:"Nhi\u1ec1u nh\u00e0 cung c\u1ea5p AI h\u00e0ng \u0111\u1ea7u. Th\u00eam m\u1edbi trong v\u00e0i gi\u00e2y.",prov_gemini:"\u0110\u0103ng nh\u1eadp Google OAuth",
+  guide_label:"H\u01b0\u1edbng d\u1eabn",guide_title:"B\u1eaft \u0111\u1ea7u trong 4 b\u01b0\u1edbc",guide_sub:"To\u00e0n b\u1ed9 setup kh\u00f4ng qu\u00e1 5 ph\u00fat.",
+  s1_t:"\u0110\u0103ng nh\u1eadp Admin",s1_d:"Truy c\u1eadp /admin, nh\u1eadp Admin Token do ch\u1ee7 s\u1edf h\u1eefu h\u1ec7 th\u1ed1ng cung c\u1ea5p.",
+  s2_t:"T\u1ea1o kh\u00e1ch h\u00e0ng",s2_d:"Nh\u1eadp t\u00ean, ID, m\u1eadt kh\u1ea9u v\u00e0 FB Thread ID. Kh\u00e1ch h\u00e0ng s\u1ebd c\u00f3 trang ri\u00eang t\u1ea1i /u/id.",
+  s3_t:"User k\u1ebft n\u1ed1i Gemini",s3_d:"Kh\u00e1ch h\u00e0ng \u0111\u0103ng nh\u1eadp trang c\u1ee7a h\u1ecd, b\u1ea5m \"\u0110\u0103ng nh\u1eadp Google\", ch\u1ecdn model Gemini t\u1eeb danh s\u00e1ch.",
+  s4_t:"Bot ho\u1ea1t \u0111\u1ed9ng",s4_d:"Xong. Bot t\u1ef1 \u0111\u1ed9ng tr\u1ea3 l\u1eddi m\u1ecdi tin nh\u1eafn Messenger b\u1eb1ng model m\u00e0 kh\u00e1ch h\u00e0ng \u0111\u00e3 ch\u1ecdn.",
+  cta_title:"S\u1eb5n s\u00e0ng b\u1eaft \u0111\u1ea7u?",cta_desc:"V\u00e0o admin panel \u0111\u1ec3 c\u00e0i \u0111\u1eb7t bot c\u1ee7a b\u1ea1n ngay b\u00e2y gi\u1edd.",cta_btn:"V\u00e0o Admin Panel",
+  footer_support:"H\u1ed7 tr\u1ee3:"
+ },
+ en:{
+  nav_features:"Features",nav_guide:"Guide",
+  hero_tag:"Live now",
+  hero_h1:"Smart auto-reply<br>powered",hero_h1b:"by AI",
+  hero_desc:"Connect Gemini to Facebook Messenger. Bot analyzes and replies to every message 24/7. Users sign in with Google and pick their own model.",
+  hero_btn_admin:"Admin Panel",hero_btn_user:"Customer page",
+  fc_msg:"Messages handled",fc_resp:"Response",
+  access_title:"Access your customer page",
+  access_hint:"Enter the ID provided by admin to manage your own page \u2014 pick Gemini model, test chat, connect Google.",
+  access_ph:"e.g. my-company",access_btn:"Go",
+  feat_label:"Features",feat_title:"Everything to automate Messenger",feat_sub:"Set up in minutes. No server needed, no coding.",
+  f1_t:"AI auto-reply",f1_d:"Bot analyzes message content and replies naturally. Multi-language support, understands conversation context.",
+  f2_t:"Management dashboard",f2_d:"Monitor messages, bot status, active model. Toggle on/off, change settings from admin panel.",
+  f3_t:"Multi-layer security",f3_d:"Google OAuth per user. Server-side encrypted tokens. Separate sessions. Auto-expiring links.",
+  f4_t:"User picks model",f4_d:"Each customer signs in with Google, picks their own Gemini model from their account's real model list.",
+  prov_title:"Connect your favorite AI",prov_sub:"Top AI providers. Add new ones in seconds.",prov_gemini:"Google OAuth sign-in",
+  guide_label:"Guide",guide_title:"Start in 4 steps",guide_sub:"Full setup takes under 5 minutes.",
+  s1_t:"Admin login",s1_d:"Go to /admin, enter the Admin Token provided by the system owner.",
+  s2_t:"Create customer",s2_d:"Enter name, ID, password and FB Thread ID. Customer gets their own page at /u/id.",
+  s3_t:"User connects Gemini",s3_d:"Customer logs into their page, clicks \"Sign in with Google\", picks a Gemini model from the list.",
+  s4_t:"Bot is live",s4_d:"Done. Bot auto-replies to every Messenger message using the model the customer chose.",
+  cta_title:"Ready to start?",cta_desc:"Go to admin panel to set up your bot now.",cta_btn:"Admin Panel",
+  footer_support:"Supports:"
+ }
+};
+let lang=localStorage.getItem("wm_lang")||"vi";
+function applyLang(l){
+ lang=l;localStorage.setItem("wm_lang",l);
+ document.documentElement.lang=l;
+ document.getElementById("langToggle").textContent=l==="vi"?"EN":"VI";
+ document.querySelectorAll("[data-i18n]").forEach(el=>{
+  const k=el.getAttribute("data-i18n");if(T[l][k])el.innerHTML=T[l][k];
+ });
+ document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+  const k=el.getAttribute("data-i18n-ph");if(T[l][k])el.placeholder=T[l][k];
+ });
+}
+function toggleLang(){applyLang(lang==="vi"?"en":"vi")}
+applyLang(lang);
 
-<script>
-const nav=document.getElementById('nav');
-window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>40),{passive:true});
-const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}})},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
-document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+const nav=document.getElementById("nav");
+window.addEventListener("scroll",()=>nav.classList.toggle("scrolled",scrollY>40),{passive:true});
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("visible");io.unobserve(e.target)}})},{threshold:.12,rootMargin:"0px 0px -40px 0px"});
+document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
 </script>
 </body>
 </html>
