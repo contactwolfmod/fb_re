@@ -64,7 +64,12 @@ app.get("/", (req: Request, res: Response, next: NextFunction) => {
 });
 
 // ── Google Gemini OAuth flow ──────────────────────────────────────────────────
-const GEMINI_SCOPES = "https://www.googleapis.com/auth/generative-language";
+// The bare "generative-language" scope isn't a real Google OAuth scope and
+// returns Error 400: invalid_scope. Use the actual Gemini API consumer scope,
+// which must also be added under Google Auth Platform → Data Access on the
+// OAuth consent screen (and the signing-in account added as a Test User while
+// the app is in Testing mode) or Google rejects it the same way.
+const GEMINI_SCOPES = "https://www.googleapis.com/auth/generative-language.peruserquota";
 
 app.get("/connect/gemini", async (req: Request, res: Response) => {
   const adminCookie = (req as any).cookies?.["adminToken"] as string | undefined;
