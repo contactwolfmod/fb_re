@@ -236,9 +236,9 @@ function fmtDate(ts: number) {
 }
 
 function tokenStatus(t: { usedAt: number | null; expiresAt: number }) {
-  if (t.usedAt) return `<span class="badge badge-used">Da dung</span>`;
-  if (t.expiresAt < Date.now()) return `<span class="badge badge-exp">Het han</span>`;
-  return `<span class="badge badge-ok">Con hieu luc</span>`;
+  if (t.usedAt) return `<span class="badge badge-used">Đã dùng</span>`;
+  if (t.expiresAt < Date.now()) return `<span class="badge badge-exp">Hết hạn</span>`;
+  return `<span class="badge badge-ok">Còn hiệu lực</span>`;
 }
 
 function initialOf(name: string) {
@@ -250,20 +250,20 @@ function initialOf(name: string) {
 // GET /admin/login
 // ═══════════════════════════════════════════════════════
 router.get("/admin/login", (req: Request, res: Response) => {
-  const err = req.query["err"] ? "Token khong dung." : "";
-  const ok = req.query["logout"] ? "Da dang xuat." : "";
+  const err = req.query["err"] ? "Token không đúng." : "";
+  const ok = req.query["logout"] ? "Đã đăng xuất." : "";
   res.setHeader("Content-Type", "text/html;charset=utf-8");
-  res.send(layout("Dang nhap Admin", `
+  res.send(layout("Đăng nhập Admin", `
     <div class="login-card">
       <div class="login-mark">${icon("shield", 24)}</div>
       <h1>Admin Login</h1>
-      <p class="sub">Nhap Admin Token de truy cap trang quan tri bot.</p>
+      <p class="sub">Nhập Admin Token để truy cập trang quản trị bot.</p>
       ${err ? `<div class="alert alert-err">${icon("alert")}<span>${err}</span></div>` : ""}
       ${ok ? `<div class="alert alert-ok">${icon("check")}<span>${ok}</span></div>` : ""}
       <form method="POST" action="/admin/login">
         <label>Admin Token</label>
-        <input type="password" name="token" placeholder="Nhap token..." autofocus autocomplete="current-password" />
-        <button type="submit" class="btn btn-primary" style="width:100%">${icon("unlock")} Dang nhap</button>
+        <input type="password" name="token" placeholder="Nhập token..." autofocus autocomplete="current-password" />
+        <button type="submit" class="btn btn-primary" style="width:100%">${icon("unlock")} Đăng nhập</button>
       </form>
     </div>
   `, { loginPage: true }));
@@ -275,7 +275,7 @@ router.get("/admin/login", (req: Request, res: Response) => {
 router.post("/admin/login", (req: Request, res: Response) => {
   const { token } = req.body as { token?: string };
   if (!ADMIN_TOKEN) {
-    res.status(503).send("ADMIN_TOKEN chua duoc dat trong env.");
+    res.status(503).send("ADMIN_TOKEN chưa được đặt trong env.");
     return;
   }
   if (!token || token !== ADMIN_TOKEN) {
@@ -318,18 +318,18 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const botOn = botState.status === "running";
 
   const accRows = accounts.length === 0
-    ? `<tr class="empty-row"><td colspan="4"><div class="empty-icon">${icon("cpu", 22)}</div>Chua co tai khoan AI nao. Them o form duoi.</td></tr>`
+    ? `<tr class="empty-row"><td colspan="4"><div class="empty-icon">${icon("cpu", 22)}</div>Chưa có tài khoản AI nào. Thêm ở form dưới.</td></tr>`
     : accounts.map(a => `
         <tr>
           <td><div style="font-weight:650;color:#e2e8f0">${a.name}</div></td>
           <td class="mono" style="font-size:.75rem;color:#818cf8;max-width:220px;word-break:break-all">${a.baseUrl}</td>
           <td class="mono" style="font-size:.75rem;color:#64748b">${a.model}</td>
-          <td><form method="POST" action="/admin/accounts/delete" style="display:inline"><input type="hidden" name="id" value="${a.id}" /><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xoa</button></form></td>
+          <td><form method="POST" action="/admin/accounts/delete" style="display:inline"><input type="hidden" name="id" value="${a.id}" /><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xóa</button></form></td>
         </tr>`).join("");
 
   const accMap = new Map(accounts.map(a => [a.id, a]));
   const tokenRows = tokens.length === 0
-    ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("link", 22)}</div>Chua co link nao.</td></tr>`
+    ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("link", 22)}</div>Chưa có link nào.</td></tr>`
     : tokens.map(t => {
         const geminiLink = `${baseOrigin}/connect/gemini?userToken=${t.id}`;
         const ttlLeft = Math.max(0, Math.round((t.expiresAt - Date.now()) / 60000));
@@ -337,43 +337,43 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         return `<tr>
           <td><div style="font-weight:650;color:#e2e8f0">${t.label}</div><div style="font-size:.7rem;color:#4b5563;margin-top:2px">${fmtDate(t.createdAt)}</div><div style="font-size:.7rem;color:#818cf8">Thread: ${t.fbThreadId || "-"}</div></td>
           <td>${tokenStatus(t)}</td>
-          <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Het han" : `Con ${ttlLeft} phut`)}</td>
+          <td style="color:#64748b">${t.usedAt ? fmtDate(t.usedAt) : (t.expiresAt < Date.now() ? "Hết hạn" : `Còn ${ttlLeft} phút`)}</td>
           <td style="color:#94a3b8;font-size:.8rem">${accName}</td>
           <td style="color:#e2e8f0;max-width:140px;word-break:break-all">${t.usedByLabel ? `<span style="color:#4ade80">${t.usedByLabel}</span>` : `<span style="color:#4b5563">-</span>`}</td>
-          <td class="mono" style="max-width:270px"><div class="link-row"><div class="link-box">${geminiLink}</div><button type="button" class="copy-btn" title="Sao chep link" onclick="wmCopy(this,'${geminiLink}')">${icon("copy", 14)}</button></div></td>
-          <td><form method="POST" action="/admin/links/delete" style="display:inline"><input type="hidden" name="id" value="${t.id}" /><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xoa</button></form></td>
+          <td class="mono" style="max-width:270px"><div class="link-row"><div class="link-box">${geminiLink}</div><button type="button" class="copy-btn" title="Sao chép link" onclick="wmCopy(this,'${geminiLink}')">${icon("copy", 14)}</button></div></td>
+          <td><form method="POST" action="/admin/links/delete" style="display:inline"><input type="hidden" name="id" value="${t.id}" /><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xóa</button></form></td>
         </tr>`;
       }).join("");
 
   const serviceUserRows = serviceUsers.length === 0
-    ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("users", 22)}</div>Chua co khach hang nao. Tao khach hang dau tien o form ben duoi.</td></tr>`
+    ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("users", 22)}</div>Chưa có khách hàng nào. Tạo khách hàng đầu tiên ở form bên dưới.</td></tr>`
     : serviceUsers.map(u => {
         const userUrl = `${baseOrigin}/u/${u.id}`;
         return `<tr>
           <td><div class="name-cell"><div class="avatar">${initialOf(u.name)}</div><div><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.7rem;color:#818cf8;margin-top:2px">ID: ${u.id}</div></div></div></td>
           <td class="mono" style="font-size:.76rem">${u.fbThreadId}</td>
           <td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td>
-          <td>${u.active ? `<span class="badge badge-ok">Hoat dong</span>` : `<span class="badge badge-exp">Da khoa</span>`}</td>
-          <td>${connectedThreads.has(u.fbThreadId) ? `<span class="badge badge-ok">Da ket noi</span>` : `<span class="badge badge-used">Chua ket noi</span>`}</td>
+          <td>${u.active ? `<span class="badge badge-ok">Hoạt động</span>` : `<span class="badge badge-exp">Đã khóa</span>`}</td>
+          <td>${connectedThreads.has(u.fbThreadId) ? `<span class="badge badge-ok">Đã kết nối</span>` : `<span class="badge badge-used">Chưa kết nối</span>`}</td>
           <td><div class="link-row" style="max-width:190px"><a href="${userUrl}" target="_blank" rel="noreferrer" class="mono" style="font-size:.74rem;color:#818cf8;display:inline-flex;align-items:center;gap:5px">/u/${u.id} ${icon("external", 12)}</a></div></td>
           <td style="white-space:nowrap">
-            <form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost btn-sm" title="${u.active ? "Khoa" : "Mo khoa"}">${u.active ? icon("lock", 13) : icon("unlock", 13)} ${u.active ? "Khoa" : "Mo"}</button></form>
-            <form method="POST" action="/admin/users/delete" style="display:inline;margin-left:6px"><input type="hidden" name="id" value="${u.id}"><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xoa</button></form>
+            <form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost btn-sm" title="${u.active ? "Khóa" : "Mở khóa"}">${u.active ? icon("lock", 13) : icon("unlock", 13)} ${u.active ? "Khóa" : "Mở"}</button></form>
+            <form method="POST" action="/admin/users/delete" style="display:inline;margin-left:6px"><input type="hidden" name="id" value="${u.id}"><button class="btn btn-danger btn-sm">${icon("trash", 13)} Xóa</button></form>
           </td>
         </tr>`;
       }).join("");
 
   const accOptions = accounts.length === 0
-    ? `<option value="">- Chua co tai khoan AI -</option>`
+    ? `<option value="">- Chưa có tài khoản AI -</option>`
     : accounts.map(a => `<option value="${a.id}">${a.name} (${a.model})</option>`).join("");
 
   const alerts = [
-    geminiOk ? `<div class="alert alert-ok">${icon("check")}<span>Da ket noi Gemini thanh cong!</span></div>` : "",
-    geminiErr ? `<div class="alert alert-err">${icon("alert")}<span>Loi ket noi Gemini: ${decodeURIComponent(geminiErr)}</span></div>` : "",
-    created ? `<div class="alert alert-ok">${icon("check")}<span>Da tao link.</span></div>` : "",
-    deleted ? `<div class="alert alert-err">${icon("alert")}<span>Da xoa link.</span></div>` : "",
-    accCreated ? `<div class="alert alert-ok">${icon("check")}<span>Da them tai khoan AI.</span></div>` : "",
-    accDeleted ? `<div class="alert alert-err">${icon("alert")}<span>Da xoa tai khoan AI.</span></div>` : "",
+    geminiOk ? `<div class="alert alert-ok">${icon("check")}<span>Đã kết nối Gemini thành công!</span></div>` : "",
+    geminiErr ? `<div class="alert alert-err">${icon("alert")}<span>Lỗi kết nối Gemini: ${decodeURIComponent(geminiErr)}</span></div>` : "",
+    created ? `<div class="alert alert-ok">${icon("check")}<span>Đã tạo link.</span></div>` : "",
+    deleted ? `<div class="alert alert-err">${icon("alert")}<span>Đã xóa link.</span></div>` : "",
+    accCreated ? `<div class="alert alert-ok">${icon("check")}<span>Đã thêm tài khoản AI.</span></div>` : "",
+    accDeleted ? `<div class="alert alert-err">${icon("alert")}<span>Đã xóa tài khoản AI.</span></div>` : "",
   ].join("");
 
   res.setHeader("Content-Type", "text/html;charset=utf-8");
@@ -382,10 +382,10 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
       <aside class="sidebar">
         <div class="side-brand"><div class="mark">${icon("shield", 19)}</div><div><div class="name">WolfMod</div><div class="tag">ADMIN PANEL</div></div></div>
         <a class="nav-item active" data-section="dashboard-top" href="/admin#dashboard-top">${icon("grid")} Dashboard</a>
-        <a class="nav-item" data-section="customers" href="#customers">${icon("users")} Khach hang</a>
+        <a class="nav-item" data-section="customers" href="#customers">${icon("users")} Khách hàng</a>
         <a class="nav-item" data-section="links" href="#links">${icon("link")} Gemini links</a>
         <a class="nav-item" data-section="accounts" href="#accounts">${icon("cpu")} AI Accounts</a>
-        <div class="nav-label">System</div>
+        <div class="nav-label">Hệ thống</div>
         <a class="nav-item" href="/">${icon("home")} Landing page</a>
         <div class="sidebar-foot">Bot: <b style="color:${botOn ? "#4ade80" : "#f87171"}">${botState.status}</b></div>
       </aside>
@@ -393,22 +393,22 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
         <div class="card">
           <div style="padding:28px 28px 0">
             <header class="topbar">
-              <div><div class="page-title">WolfMod Admin</div><div class="page-sub">Quan ly khach hang, ket noi Gemini va Facebook Bot</div></div>
+              <div><div class="page-title">WolfMod Admin</div><div class="page-sub">Quản lý khách hàng, kết nối Gemini và Facebook Bot</div></div>
               <div class="topbar-actions">
-                <span class="badge ${botOn ? "badge-ok" : "badge-exp"}">${botOn ? "Bot dang chay" : "Bot: " + botState.status}</span>
-                <form method="POST" action="/admin/logout"><button class="btn btn-ghost">${icon("logout")} Dang xuat</button></form>
+                <span class="badge ${botOn ? "badge-ok" : "badge-exp"}">${botOn ? "Bot đang chạy" : "Bot: " + botState.status}</span>
+                <form method="POST" action="/admin/logout"><button class="btn btn-ghost">${icon("logout")} Đăng xuất</button></form>
               </div>
             </header>
 
             <div id="dashboard-top" class="dashboard-grid">
-              <div class="metric"><div class="metric-icon accent">${icon("users", 16)}</div><div class="metric-label">Tong khach hang</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con da cap phep</div></div>
-              <div class="metric"><div class="metric-icon ok">${icon("bolt", 16)}</div><div class="metric-label">Dang hoat dong</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tai khoan dang khoa</div></div>
-              <div class="metric"><div class="metric-icon accent">${icon("link", 16)}</div><div class="metric-label">Da ket noi Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
-              <div class="metric"><div class="metric-icon ${botOn ? "ok" : ""}">${icon("cpu", 16)}</div><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.15rem;padding-top:6px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhan da xu ly</div></div>
+              <div class="metric"><div class="metric-icon accent">${icon("users", 16)}</div><div class="metric-label">Tổng khách hàng</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con đã cấp phép</div></div>
+              <div class="metric"><div class="metric-icon ok">${icon("bolt", 16)}</div><div class="metric-label">Đang hoạt động</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tài khoản đang khóa</div></div>
+              <div class="metric"><div class="metric-icon accent">${icon("link", 16)}</div><div class="metric-label">Đã kết nối Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
+              <div class="metric"><div class="metric-icon ${botOn ? "ok" : ""}">${icon("cpu", 16)}</div><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.15rem;padding-top:6px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhắn đã xử lý</div></div>
             </div>
 
             <div class="quick-actions">
-              <a href="/connect/gemini" class="btn btn-primary">${icon("link")} Ket noi Gemini (Admin)</a>
+              <a href="/connect/gemini" class="btn btn-primary">${icon("link")} Kết nối Gemini (Admin)</a>
               <a href="/" class="btn btn-ghost">${icon("home")} Landing page</a>
             </div>
 
@@ -418,36 +418,36 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
           <div style="padding:0 28px 28px">
             <section id="customers" class="section">
               <div class="section-head">
-                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khach hang dich vu</div><div class="section-note">Moi khach hang co URL, mat khau, FB Thread va Gemini rieng.</div></div></div>
-                <span class="badge badge-ok">${activeUsers} dang hoat dong</span>
+                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Mỗi khách hàng có URL, mật khẩu, FB Thread và Gemini riêng.</div></div></div>
+                <span class="badge badge-ok">${activeUsers} đang hoạt động</span>
               </div>
               <div class="panel" style="margin-bottom:16px">
                 <form method="POST" action="/admin/users/create" class="form-grid">
-                  <div><label>Ten khach hang</label><input name="name" required maxlength="80" placeholder="Cong ty ABC"></div>
+                  <div><label>Tên khách hàng</label><input name="name" required maxlength="80" placeholder="Công ty ABC"></div>
                   <div><label>ID link con</label><input name="id" required pattern="[a-z0-9-]{3,48}" placeholder="cong-ty-abc"></div>
-                  <div><label>Mat khau</label><input name="password" type="password" required minlength="8" placeholder="Toi thieu 8 ky tu"></div>
+                  <div><label>Mật khẩu</label><input name="password" type="password" required minlength="8" placeholder="Tối thiểu 8 ký tự"></div>
                   <div><label>FB Thread ID</label><input name="fbThreadId" required placeholder="1234567890"></div>
-                  <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tao khach hang va link con</button></div>
+                  <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tạo khách hàng và link con</button></div>
                 </form>
               </div>
-              <div class="table-wrap"><table><thead><tr><th>Khach hang</th><th>FB Thread ID</th><th>Ngay dang ky</th><th>Trang thai</th><th>Gemini</th><th>Trang con</th><th>Thao tac</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Khách hàng</th><th>FB Thread ID</th><th>Ngày đăng ký</th><th>Trạng thái</th><th>Gemini</th><th>Trang con</th><th>Thao tác</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
             </section>
 
             <section id="accounts" class="section">
               <div class="section-head">
-                <div class="section-head-left"><div class="section-icon">${icon("cpu", 15)}</div><div><div class="section-title">Tai khoan AI</div><div class="section-note">Cac provider dung de tra loi tin nhan (Claude, Gemini, 9Router, OpenRouter...).</div></div></div>
-                <span class="badge badge-used">${accounts.length} tai khoan</span>
+                <div class="section-head-left"><div class="section-icon">${icon("cpu", 15)}</div><div><div class="section-title">Tài khoản AI</div><div class="section-note">Các provider dùng để trả lời tin nhắn (Claude, Gemini, 9Router, OpenRouter...).</div></div></div>
+                <span class="badge badge-used">${accounts.length} tài khoản</span>
               </div>
-              <div class="table-wrap"><table><thead><tr><th>Ten</th><th>Base URL</th><th>Model</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Tên</th><th>Base URL</th><th>Model</th><th></th></tr></thead><tbody>${accRows}</tbody></table></div>
               <details style="margin-top:14px">
-                <summary><div class="summary-row">${icon("plus", 14)} Them tai khoan AI moi</div></summary>
+                <summary><div class="summary-row">${icon("plus", 14)} Thêm tài khoản AI mới</div></summary>
                 <div class="panel" style="margin-top:10px">
                   <form method="POST" action="/admin/accounts/create" class="form-grid" style="grid-template-columns:1fr 1fr">
-                    <div><label>Ten hien thi</label><input name="name" placeholder="9Router Production" required /></div>
+                    <div><label>Tên hiển thị</label><input name="name" placeholder="9Router Production" required /></div>
                     <div><label>Base URL</label><input name="baseUrl" placeholder="https://api.9router.dev/v1" required /></div>
                     <div><label>API Key</label><input name="apiKey" type="password" placeholder="sk-..." required /></div>
                     <div><label>Model</label><input name="model" placeholder="cc/claude-opus-4-5" required /></div>
-                    <div class="span-all"><button class="btn btn-primary" style="width:100%">${icon("plus")} Them tai khoan AI</button></div>
+                    <div class="span-all"><button class="btn btn-primary" style="width:100%">${icon("plus")} Thêm tài khoản AI</button></div>
                   </form>
                 </div>
               </details>
@@ -455,23 +455,23 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
 
             <section id="links" class="section">
               <div class="section-head">
-                <div class="section-head-left"><div class="section-icon">${icon("link", 15)}</div><div><div class="section-title">Link ket noi Gemini</div><div class="section-note">Tao link OAuth de nguoi dung tu chon model Gemini rieng.</div></div></div>
+                <div class="section-head-left"><div class="section-icon">${icon("link", 15)}</div><div><div class="section-title">Link kết nối Gemini</div><div class="section-note">Tạo link OAuth để người dùng tự chọn model Gemini riêng.</div></div></div>
                 <span class="badge badge-used">${tokens.length} link</span>
               </div>
               <div class="panel" style="margin-bottom:16px">
                 <form method="POST" action="/admin/links/create" class="form-grid" style="grid-template-columns:1fr 1fr">
-                  <div><label>Nhan (ten nguoi dung)</label><input name="label" placeholder="Khach hang A" required /></div>
+                  <div><label>Nhãn (tên người dùng)</label><input name="label" placeholder="Khách hàng A" required /></div>
                   <div>
-                    <label>FB Thread ID (ID cuoc tro chuyen)</label>
-                    <input name="fbThreadId" placeholder="1234567890" required title="Lay tu URL facebook.com/messages/t/[ID]" />
-                    <div class="hint">Lay tu URL facebook.com/messages/t/[ID]</div>
+                    <label>FB Thread ID (ID cuộc trò chuyện)</label>
+                    <input name="fbThreadId" placeholder="1234567890" required title="Lấy từ URL facebook.com/messages/t/[ID]" />
+                    <div class="hint">Lấy từ URL facebook.com/messages/t/[ID]</div>
                   </div>
-                  <div><label>Tai khoan AI (tuy chon)</label><select name="aiAccountId"><option value="">- Khong chon (dung Gemini OAuth) -</option>${accOptions}</select></div>
-                  <div><label>Hieu luc</label><select name="ttlHours"><option value="1">1 gio</option><option value="6">6 gio</option><option value="24" selected>24 gio</option><option value="72">3 ngay</option><option value="168">7 ngay</option></select></div>
-                  <div class="span-all"><button class="btn btn-primary" style="width:100%">${icon("plus")} Tao link Gemini</button></div>
+                  <div><label>Tài khoản AI (tùy chọn)</label><select name="aiAccountId"><option value="">- Không chọn (dùng Gemini OAuth) -</option>${accOptions}</select></div>
+                  <div><label>Hiệu lực</label><select name="ttlHours"><option value="1">1 giờ</option><option value="6">6 giờ</option><option value="24" selected>24 giờ</option><option value="72">3 ngày</option><option value="168">7 ngày</option></select></div>
+                  <div class="span-all"><button class="btn btn-primary" style="width:100%">${icon("plus")} Tạo link Gemini</button></div>
                 </form>
               </div>
-              <div class="table-wrap"><table><thead><tr><th>Nhan</th><th>Trang thai</th><th>Het han</th><th>Tai khoan AI</th><th>Nguoi dung</th><th>Link</th><th></th></tr></thead><tbody>${tokenRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Nhãn</th><th>Trạng thái</th><th>Hết hạn</th><th>Tài khoản AI</th><th>Người dùng</th><th>Link</th><th></th></tr></thead><tbody>${tokenRows}</tbody></table></div>
             </section>
           </div>
         </div>
@@ -483,16 +483,16 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
 router.post("/admin/users/create", requireAdmin, (req: Request, res: Response) => {
   const { id, name, password, fbThreadId } = req.body as { id?: string; name?: string; password?: string; fbThreadId?: string };
   const safeId = id?.trim().toLowerCase() ?? "";
-  if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !fbThreadId?.trim() || !password || password.length < 8) { res.status(400).send("Thong tin user khong hop le. ID dung a-z, 0-9, -, dai 3-48; mat khau toi thieu 8 ky tu."); return; }
+  if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !fbThreadId?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin user không hợp lệ. ID dùng a-z, 0-9, -, dài 3-48; mật khẩu tối thiểu 8 ký tự."); return; }
   try { createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password, fbThreadId: fbThreadId.trim() }); res.redirect("/admin"); }
-  catch (err: any) { res.status(409).send(err?.message ?? "Khong tao duoc user."); }
+  catch (err: any) { res.status(409).send(err?.message ?? "Không tạo được user."); }
 });
 router.post("/admin/users/toggle", requireAdmin, (req: Request, res: Response) => { const { id, active } = req.body as { id?: string; active?: string }; if (id) setServiceUserActive(id, active === "1"); res.redirect("/admin"); });
 router.post("/admin/users/delete", requireAdmin, (req: Request, res: Response) => { const { id } = req.body as { id?: string }; if (id) deleteServiceUser(id); res.redirect("/admin"); });
 
 router.post("/admin/accounts/create", requireAdmin, (req: Request, res: Response) => {
   const { name, baseUrl, apiKey, model } = req.body as { name?: string; baseUrl?: string; apiKey?: string; model?: string };
-  if (!name || !baseUrl || !apiKey || !model) { res.status(400).send("Thieu thong tin."); return; }
+  if (!name || !baseUrl || !apiKey || !model) { res.status(400).send("Thiếu thông tin."); return; }
   createAiAccount({ name: name.trim().slice(0, 80), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim().slice(0, 100) });
   res.redirect("/admin?accCreated=1");
 });
@@ -505,7 +505,7 @@ router.post("/admin/accounts/delete", requireAdmin, (req: Request, res: Response
 
 router.post("/admin/links/create", requireAdmin, (req: Request, res: Response) => {
   const { label, ttlHours, redirectUrl, aiAccountId, fbThreadId } = req.body as { label?: string; ttlHours?: string; redirectUrl?: string; aiAccountId?: string; fbThreadId?: string };
-  if (!fbThreadId?.trim()) { res.status(400).send("Phai nhap FB Thread ID."); return; }
+  if (!fbThreadId?.trim()) { res.status(400).send("Phải nhập FB Thread ID."); return; }
   const safeLabel = (label ?? "User").slice(0, 80);
   const ttl = Math.min(Math.max(Number(ttlHours ?? 24), 1), 720);
   const redirect = (redirectUrl ?? "").trim() || `${req.protocol}://${req.get("host")}/`;
