@@ -17,6 +17,11 @@ COPY scripts/package.json ./scripts/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY artifacts/fb-bot-dashboard/package.json ./artifacts/fb-bot-dashboard/
 
+# pnpm patches (pnpm-workspace.yaml's patchedDependencies) are applied
+# during install, so they must exist before that step, not just after the
+# later full-source COPY.
+COPY patches ./patches
+
 # Install all workspace dependencies
 RUN pnpm install --no-frozen-lockfile
 
