@@ -2,7 +2,7 @@
 import OpenAI from "openai";
 import { logger } from "../lib/logger";
 import { botState } from "./state";
-import { getUserAiConfig, GEMINI_BASE_URL } from "../lib/adminAuth";
+import { getUserAiConfig, resolveServiceUserForThread, GEMINI_BASE_URL } from "../lib/adminAuth";
 
 // ── Static fallback clients (Replit / Anthropic / GitHub) ────────────────
 const replitBaseURL = process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"];
@@ -47,9 +47,13 @@ interface ResolvedClient {
 }
 
 function resolveClient(threadId?: string): ResolvedClient {
-  // Per-user Gemini config takes highest priority
+  // Per-user Gemini config takes highest priority. Resolve the owning service
+  // user first (their config is keyed by their account ID, shared across all
+  // of their configured threads); fall back to the raw threadId for the
+  // legacy one-off connect-link flow that has no service user account.
   if (threadId) {
-    const userConfig = getUserAiConfig(threadId);
+    const owner = resolveServiceUserForThread(threadId);
+    const userConfig = getUserAiConfig(owner?.id ?? threadId);
     if (userConfig && userConfig.accessToken) {
       return {
         provider: "openai-compat",

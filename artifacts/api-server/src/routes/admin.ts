@@ -12,7 +12,7 @@ import {
   listServiceUsers,
   deleteServiceUser,
   setServiceUserActive,
-  listUserAiConfigs,
+  getUserAiConfig,
 } from "../lib/adminAuth";
 import { botState } from "../bot/state";
 
@@ -305,9 +305,8 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
   const tokens = listUserTokens();
   const accounts = listAiAccounts();
   const serviceUsers = listServiceUsers();
-  const connectedThreads = new Set(listUserAiConfigs().map(config => config.threadId));
   const activeUsers = serviceUsers.filter(user => user.active).length;
-  const geminiUsers = serviceUsers.filter(user => connectedThreads.has(user.fbThreadId)).length;
+  const geminiUsers = serviceUsers.filter(user => !!getUserAiConfig(user.id)).length;
   const geminiOk = req.query["geminiOk"] as string | undefined;
   const geminiErr = req.query["geminiErr"] as string | undefined;
   const created = req.query["created"] as string | undefined;
@@ -349,12 +348,18 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
     ? `<tr class="empty-row"><td colspan="7"><div class="empty-icon">${icon("users", 22)}</div>Chưa có khách hàng nào. Tạo khách hàng đầu tiên ở form bên dưới.</td></tr>`
     : serviceUsers.map(u => {
         const userUrl = `${baseOrigin}/u/${u.id}`;
+        const modeBadge = u.replyMode === "all"
+          ? `<span class="badge badge-ok">Tất cả hội thoại</span>`
+          : `<span class="badge badge-used">${u.threadIds.length} hội thoại cụ thể</span>`;
+        const threadPreview = u.replyMode === "specific" && u.threadIds.length > 0
+          ? `<div class="mono" style="font-size:.68rem;color:#64748b;margin-top:4px;max-width:170px;word-break:break-all">${u.threadIds.join(", ")}</div>`
+          : "";
         return `<tr>
           <td><div class="name-cell"><div class="avatar">${initialOf(u.name)}</div><div><div style="font-weight:700;color:#f1f5f9">${u.name}</div><div class="mono" style="font-size:.7rem;color:#818cf8;margin-top:2px">ID: ${u.id}</div></div></div></td>
-          <td class="mono" style="font-size:.76rem">${u.fbThreadId}</td>
+          <td>${modeBadge}${threadPreview}</td>
           <td style="font-size:.78rem;color:#94a3b8">${fmtDate(u.createdAt)}</td>
           <td>${u.active ? `<span class="badge badge-ok">Hoạt động</span>` : `<span class="badge badge-exp">Đã khóa</span>`}</td>
-          <td>${connectedThreads.has(u.fbThreadId) ? `<span class="badge badge-ok">Đã kết nối</span>` : `<span class="badge badge-used">Chưa kết nối</span>`}</td>
+          <td>${getUserAiConfig(u.id) ? `<span class="badge badge-ok">Đã kết nối</span>` : `<span class="badge badge-used">Chưa kết nối</span>`}</td>
           <td><div class="link-row" style="max-width:190px"><a href="${userUrl}" target="_blank" rel="noreferrer" class="mono" style="font-size:.74rem;color:#818cf8;display:inline-flex;align-items:center;gap:5px">/u/${u.id} ${icon("external", 12)}</a></div></td>
           <td style="white-space:nowrap">
             <form method="POST" action="/admin/users/toggle" style="display:inline"><input type="hidden" name="id" value="${u.id}"><input type="hidden" name="active" value="${u.active ? "0" : "1"}"><button class="btn btn-ghost btn-sm" title="${u.active ? "Khóa" : "Mở khóa"}">${u.active ? icon("lock", 13) : icon("unlock", 13)} ${u.active ? "Khóa" : "Mở"}</button></form>
@@ -403,7 +408,7 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
             <div id="dashboard-top" class="dashboard-grid">
               <div class="metric"><div class="metric-icon accent">${icon("users", 16)}</div><div class="metric-label">Tổng khách hàng</div><div class="metric-value">${serviceUsers.length}</div><div class="metric-foot">Link con đã cấp phép</div></div>
               <div class="metric"><div class="metric-icon ok">${icon("bolt", 16)}</div><div class="metric-label">Đang hoạt động</div><div class="metric-value" style="color:#4ade80">${activeUsers}</div><div class="metric-foot">${serviceUsers.length - activeUsers} tài khoản đang khóa</div></div>
-              <div class="metric"><div class="metric-icon accent">${icon("link", 16)}</div><div class="metric-label">Đã kết nối Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Theo FB Thread ID</div></div>
+              <div class="metric"><div class="metric-icon accent">${icon("link", 16)}</div><div class="metric-label">Đã kết nối Gemini</div><div class="metric-value" style="color:#e94560">${geminiUsers}</div><div class="metric-foot">Trên tổng số khách hàng</div></div>
               <div class="metric"><div class="metric-icon ${botOn ? "ok" : ""}">${icon("cpu", 16)}</div><div class="metric-label">Bot Messenger</div><div class="metric-value" style="font-size:1.15rem;padding-top:6px;text-transform:capitalize">${botState.status}</div><div class="metric-foot">${botState.messagesHandled} tin nhắn đã xử lý</div></div>
             </div>
 
@@ -418,19 +423,18 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
           <div style="padding:0 28px 28px">
             <section id="customers" class="section">
               <div class="section-head">
-                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Mỗi khách hàng có URL, mật khẩu, FB Thread và Gemini riêng.</div></div></div>
+                <div class="section-head-left"><div class="section-icon">${icon("users", 15)}</div><div><div class="section-title">Khách hàng dịch vụ</div><div class="section-note">Mỗi khách hàng có URL và mật khẩu riêng; tự chọn hội thoại cần trả lời và kết nối Gemini trên trang của họ.</div></div></div>
                 <span class="badge badge-ok">${activeUsers} đang hoạt động</span>
               </div>
               <div class="panel" style="margin-bottom:16px">
-                <form method="POST" action="/admin/users/create" class="form-grid">
+                <form method="POST" action="/admin/users/create" class="form-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
                   <div><label>Tên khách hàng</label><input name="name" required maxlength="80" placeholder="Công ty ABC"></div>
                   <div><label>ID link con</label><input name="id" required pattern="[a-z0-9-]{3,48}" placeholder="cong-ty-abc"></div>
                   <div><label>Mật khẩu</label><input name="password" type="password" required minlength="8" placeholder="Tối thiểu 8 ký tự"></div>
-                  <div><label>FB Thread ID</label><input name="fbThreadId" required placeholder="1234567890"></div>
                   <div class="span-all"><button class="btn btn-primary">${icon("plus")} Tạo khách hàng và link con</button></div>
                 </form>
               </div>
-              <div class="table-wrap"><table><thead><tr><th>Khách hàng</th><th>FB Thread ID</th><th>Ngày đăng ký</th><th>Trạng thái</th><th>Gemini</th><th>Trang con</th><th>Thao tác</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
+              <div class="table-wrap"><table><thead><tr><th>Khách hàng</th><th>Chế độ trả lời</th><th>Ngày đăng ký</th><th>Trạng thái</th><th>Gemini</th><th>Trang con</th><th>Thao tác</th></tr></thead><tbody>${serviceUserRows}</tbody></table></div>
             </section>
 
             <section id="accounts" class="section">
@@ -481,10 +485,10 @@ router.get("/admin", requireAdmin, (req: Request, res: Response) => {
 });
 
 router.post("/admin/users/create", requireAdmin, (req: Request, res: Response) => {
-  const { id, name, password, fbThreadId } = req.body as { id?: string; name?: string; password?: string; fbThreadId?: string };
+  const { id, name, password } = req.body as { id?: string; name?: string; password?: string };
   const safeId = id?.trim().toLowerCase() ?? "";
-  if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !fbThreadId?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin user không hợp lệ. ID dùng a-z, 0-9, -, dài 3-48; mật khẩu tối thiểu 8 ký tự."); return; }
-  try { createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password, fbThreadId: fbThreadId.trim() }); res.redirect("/admin"); }
+  if (!/^[a-z0-9-]{3,48}$/.test(safeId) || !name?.trim() || !password || password.length < 8) { res.status(400).send("Thông tin user không hợp lệ. ID dùng a-z, 0-9, -, dài 3-48; mật khẩu tối thiểu 8 ký tự."); return; }
+  try { createServiceUser({ id: safeId, name: name.trim().slice(0, 80), password }); res.redirect("/admin"); }
   catch (err: any) { res.status(409).send(err?.message ?? "Không tạo được user."); }
 });
 router.post("/admin/users/toggle", requireAdmin, (req: Request, res: Response) => { const { id, active } = req.body as { id?: string; active?: string }; if (id) setServiceUserActive(id, active === "1"); res.redirect("/admin"); });

@@ -73,7 +73,7 @@ app.get("/connect/gemini", (req: Request, res: Response) => {
     }
     // User token must have fbThreadId for Gemini flow
     if (!ut.fbThreadId) {
-      res.status(400).send("Link nay khong ho tro ket noi Gemini (thieu fbThreadId)."); return;
+      res.status(400).send("Link này không hỗ trợ kết nối Gemini (thiếu fbThreadId)."); return;
     }
   }
 
@@ -90,8 +90,11 @@ app.get("/connect/gemini", (req: Request, res: Response) => {
   }
 
   const ut = userTokenId ? getUserToken(userTokenId) : undefined;
-  const threadId = serviceUser?.fbThreadId ?? ut?.fbThreadId;
-  const state = createOAuthState(isAdmin, threadId, userTokenId, serviceUser?.id);
+  // Service-user flow: key the resulting AI config by their account ID (shared
+  // across all of their configured threads). Legacy one-off flow: key by the
+  // raw FB thread ID from the connect link, as before.
+  const ownerKey = serviceUser?.id ?? ut?.fbThreadId;
+  const state = createOAuthState(isAdmin, ownerKey, userTokenId, serviceUser?.id);
   const redirectUri = `${req.protocol}://${req.get("host")}/connect/gemini/callback`;
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -140,12 +143,13 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
     };
     if (!tokens.access_token) throw new Error("Khong co access_token trong response");
 
-    const { isAdmin, threadId, userTokenId, serviceUserId } = stateData;
+    const { isAdmin, ownerKey, userTokenId, serviceUserId } = stateData;
 
-    if (threadId) {
-      // Per-user flow: save to UserAiConfig keyed by FB thread ID
+    if (ownerKey) {
+      // Per-user flow: save to UserAiConfig keyed by owner (service user ID, or
+      // raw FB thread ID for the legacy one-off connect-link flow)
       setUserAiConfig({
-        threadId,
+        ownerKey,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         tokenExpiry: Date.now() + tokens.expires_in * 1000,
@@ -171,7 +175,7 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
         <h2 style="color:#4ade80;margin:0 0 8px">Da ket noi Google thanh cong!</h2>
         <p style="color:#94a3b8;font-size:14px;margin-bottom:20px">Chon model Gemini ma ban muon bot su dung khi tra loi Messenger:</p>
         <form method="POST" action="/connect/gemini/select-model">
-          <input type="hidden" name="threadId" value="${threadId}" />
+          <input type="hidden" name="ownerKey" value="${ownerKey}" />
           <select name="model">${modelOptions}</select>
           <button type="submit">Xac nhan Model &amp; Bat dau dung</button>
         </form>
@@ -200,9 +204,9 @@ app.get("/connect/gemini/callback", async (req: Request, res: Response) => {
 
 
 app.post("/connect/gemini/select-model", (req: Request, res: Response) => {
-  const { threadId, model } = req.body as { threadId?: string; model?: string };
-  if (threadId && model) {
-    updateUserAiModel(threadId, model.replace(/^models\//, "").trim());
+  const { ownerKey, model } = req.body as { ownerKey?: string; model?: string };
+  if (ownerKey && model) {
+    updateUserAiModel(ownerKey, model.replace(/^models\//, "").trim());
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cai dat thanh cong</title>

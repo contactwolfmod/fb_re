@@ -2,7 +2,7 @@
 import { logger } from "../lib/logger";
 import { bufferLog } from "../lib/logBuffer";
 import { botState } from "./state";
-import { getUserAiConfig, listUserTokens } from "../lib/adminAuth";
+import { getUserAiConfig, listUserTokens, resolveServiceUserForThread } from "../lib/adminAuth";
 import { getClaudeReply } from "./claude";
 import * as fs from "fs";
 import * as path from "path";
@@ -297,8 +297,11 @@ async function handleMessage(
     return;
   }
 
-  // Check per-user Gemini config
-  const userAiConfig = getUserAiConfig(threadId);
+  // Check per-user Gemini config — resolve the service user who owns this
+  // thread (via their "reply all" default or their specific thread list)
+  // first, since their config is keyed by account ID, not by thread ID.
+  const owner = resolveServiceUserForThread(threadId);
+  const userAiConfig = getUserAiConfig(owner?.id ?? threadId);
   const hasGlobalAi = !!(botState.aiBaseUrl && botState.aiApiKey);
   const hasStaticAi = !!(
     process.env["AI_INTEGRATIONS_ANTHROPIC_BASE_URL"] ||

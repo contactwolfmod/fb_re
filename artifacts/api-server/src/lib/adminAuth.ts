@@ -13,21 +13,21 @@ export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta
 export const GEMINI_DEFAULT_MODEL = "gemini-2.0-flash";
 
 // ── Google OAuth states (short-lived, server-side CSRF protection) ────────────
-const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; threadId?: string; userTokenId?: string; serviceUserId?: string }>();
+const oauthStates = new Map<string, { createdAt: number; isAdmin: boolean; ownerKey?: string; userTokenId?: string; serviceUserId?: string }>();
 
-export function createOAuthState(isAdmin: boolean, threadId?: string, userTokenId?: string, serviceUserId?: string): string {
+export function createOAuthState(isAdmin: boolean, ownerKey?: string, userTokenId?: string, serviceUserId?: string): string {
   const state = randomUUID();
-  oauthStates.set(state, { createdAt: Date.now(), isAdmin, threadId, userTokenId, serviceUserId });
+  oauthStates.set(state, { createdAt: Date.now(), isAdmin, ownerKey, userTokenId, serviceUserId });
   return state;
 }
 
-export function consumeOAuthState(state: string): { isAdmin: boolean; threadId?: string; userTokenId?: string; serviceUserId?: string } | undefined {
+export function consumeOAuthState(state: string): { isAdmin: boolean; ownerKey?: string; userTokenId?: string; serviceUserId?: string } | undefined {
   const s = oauthStates.get(state);
   if (!s) return undefined;
   oauthStates.delete(state);
   // expire after 10 min
   if (Date.now() - s.createdAt > 600_000) return undefined;
-  return { isAdmin: s.isAdmin, threadId: s.threadId, userTokenId: s.userTokenId, serviceUserId: s.serviceUserId };
+  return { isAdmin: s.isAdmin, ownerKey: s.ownerKey, userTokenId: s.userTokenId, serviceUserId: s.serviceUserId };
 }
 
 // cleanup every 10 min
@@ -116,9 +116,11 @@ setInterval(() => {
   for (const [id, t] of userTokens.entries()) { if (t.expiresAt < now) userTokens.delete(id); }
 }, 600_000);
 
-// ── Per-user Gemini AI config (keyed by FB thread ID) ────────────────────────
+// ── Per-user Gemini AI config ─────────────────────────────────────────────────
+// Keyed by "ownerKey": a service user's ID for the self-service flow, or a raw
+// FB thread ID for the legacy one-off connect-link flow (no service user account).
 export interface UserAiConfig {
-  threadId: string;
+  ownerKey: string;
   accessToken: string;
   refreshToken?: string;
   tokenExpiry: number;   // epoch ms
@@ -129,15 +131,15 @@ export interface UserAiConfig {
 const userAiConfigs = new Map<string, UserAiConfig>();
 
 export function setUserAiConfig(config: UserAiConfig): void {
-  userAiConfigs.set(config.threadId, config);
+  userAiConfigs.set(config.ownerKey, config);
 }
 
-export function getUserAiConfig(threadId: string): UserAiConfig | undefined {
-  return userAiConfigs.get(threadId);
+export function getUserAiConfig(ownerKey: string): UserAiConfig | undefined {
+  return userAiConfigs.get(ownerKey);
 }
 
-export function updateUserAiModel(threadId: string, model: string): boolean {
-  const config = userAiConfigs.get(threadId);
+export function updateUserAiModel(ownerKey: string, model: string): boolean {
+  const config = userAiConfigs.get(ownerKey);
   if (!config) return false;
   config.model = model;
   return true;
@@ -176,8 +178,8 @@ export async function fetchGeminiModels(accessToken: string): Promise<string[]> 
   return fallbackModels;
 }
 
-export function deleteUserAiConfig(threadId: string): void {
-  userAiConfigs.delete(threadId);
+export function deleteUserAiConfig(ownerKey: string): void {
+  userAiConfigs.delete(ownerKey);
 }
 
 export function listUserAiConfigs(): UserAiConfig[] {
@@ -185,17 +187,25 @@ export function listUserAiConfigs(): UserAiConfig[] {
 }
 
 // ── Managed service users ─────────────────────────────────────────────────────
+// Reply mode is self-configured by the service user from their own /u/:id page:
+// "all" = auto-reply to every incoming Messenger conversation, "specific" = only
+// the FB thread IDs they've explicitly added to threadIds.
+export type ReplyMode = "all" | "specific";
+
 export interface ServiceUser {
   id: string;
   name: string;
   passwordHash: string;
-  fbThreadId: string;
+  replyMode: ReplyMode;
+  threadIds: string[];
   active: boolean;
   createdAt: number;
 }
 
 const serviceUsers = new Map<string, ServiceUser>();
 const userSessions = new Map<string, { userId: string; expiresAt: number }>();
+const validThreadId = /^\d{5,32}$/;
+const MAX_THREADS_PER_USER = 50;
 
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -212,16 +222,62 @@ function verifyPassword(password: string, stored: string): boolean {
   return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
-export function createServiceUser(opts: { id: string; name: string; password: string; fbThreadId: string }): ServiceUser {
+export function createServiceUser(opts: { id: string; name: string; password: string }): ServiceUser {
   const id = opts.id.toLowerCase();
   if (serviceUsers.has(id)) throw new Error("ID nguoi dung da ton tai.");
-  const user: ServiceUser = { id, name: opts.name, passwordHash: hashPassword(opts.password), fbThreadId: opts.fbThreadId, active: true, createdAt: Date.now() };
+  const user: ServiceUser = {
+    id, name: opts.name, passwordHash: hashPassword(opts.password),
+    replyMode: "specific", threadIds: [], active: true, createdAt: Date.now(),
+  };
   serviceUsers.set(id, user);
   return user;
 }
 
 export function getServiceUser(id: string): ServiceUser | undefined { return serviceUsers.get(id.toLowerCase()); }
 export function listServiceUsers(): ServiceUser[] { return [...serviceUsers.values()].sort((a, b) => b.createdAt - a.createdAt); }
+
+export function setServiceUserReplyMode(id: string, mode: ReplyMode): boolean {
+  const user = getServiceUser(id);
+  if (!user) return false;
+  user.replyMode = mode;
+  return true;
+}
+
+export function addServiceUserThread(id: string, threadId: string): { ok: boolean; error?: string } {
+  const user = getServiceUser(id);
+  if (!user) return { ok: false, error: "Khong tim thay user." };
+  const clean = threadId.trim();
+  if (!validThreadId.test(clean)) return { ok: false, error: "Thread ID khong hop le (chi gom chu so, 5-32 ky tu)." };
+  if (user.threadIds.includes(clean)) return { ok: false, error: "Thread ID nay da duoc them." };
+  if (user.threadIds.length >= MAX_THREADS_PER_USER) return { ok: false, error: "Da dat gioi han so hoi thoai." };
+  user.threadIds.push(clean);
+  return { ok: true };
+}
+
+export function removeServiceUserThread(id: string, threadId: string): boolean {
+  const user = getServiceUser(id);
+  if (!user) return false;
+  const idx = user.threadIds.indexOf(threadId);
+  if (idx === -1) return false;
+  user.threadIds.splice(idx, 1);
+  return true;
+}
+
+/**
+ * Resolve which service user (if any) owns an incoming FB thread: an exact
+ * match in their specific thread list wins; otherwise the earliest-created
+ * active user in "reply all" mode acts as the default responder.
+ */
+export function resolveServiceUserForThread(threadId: string): ServiceUser | undefined {
+  let fallbackAll: ServiceUser | undefined;
+  const byAge = [...serviceUsers.values()].sort((a, b) => a.createdAt - b.createdAt);
+  for (const user of byAge) {
+    if (!user.active) continue;
+    if (user.replyMode === "specific" && user.threadIds.includes(threadId)) return user;
+    if (user.replyMode === "all" && !fallbackAll) fallbackAll = user;
+  }
+  return fallbackAll;
+}
 export function deleteServiceUser(id: string): void {
   serviceUsers.delete(id.toLowerCase());
   for (const [sessionId, session] of userSessions) if (session.userId === id.toLowerCase()) userSessions.delete(sessionId);
