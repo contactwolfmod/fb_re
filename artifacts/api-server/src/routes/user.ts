@@ -46,7 +46,12 @@ function css() {
     html,body{margin:0;padding:0}
     body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;background-image:radial-gradient(circle at 8% 0%,var(--accent-soft),transparent 30%),radial-gradient(circle at 92% 8%,rgba(56,189,248,.09),transparent 26%);background-attachment:fixed}
     a{color:inherit}
-    .page-wrap{max-width:720px;margin:0 auto;padding:40px 18px 70px}
+    .page-wrap{max-width:1320px;margin:0 auto;padding:36px 28px 70px}
+
+    /* horizontal two-column layout: config on the left, AI status + live test chat pinned on the right */
+    .layout-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:22px;align-items:start}
+    .col-stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+    .sidebar-col{position:sticky;top:24px}
 
     /* login */
     body.login-body{display:flex;align-items:center;justify-content:center;padding:24px}
@@ -92,7 +97,7 @@ function css() {
     .alert-err{background:var(--danger-soft);border:1px solid rgba(233,69,96,.25);color:#fca5a5}
     .alert-ok{background:var(--success-soft);border:1px solid rgba(52,211,153,.22);color:#86efac}
 
-    .card{background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:var(--radius-lg);box-shadow:0 16px 44px rgba(0,0,0,.35);padding:22px;margin-bottom:18px}
+    .card{background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(233,69,96,.12);border-radius:var(--radius-lg);box-shadow:0 16px 44px rgba(0,0,0,.35);padding:22px}
     .card-head{display:flex;align-items:center;gap:11px;margin-bottom:16px}
     .card-icon{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
     .card-title{font-size:.98rem;font-weight:750;color:var(--text)}
@@ -141,6 +146,10 @@ function css() {
     .summary-row{display:flex;align-items:center;gap:8px;color:#a5adf7;font-size:.83rem;font-weight:650;padding:.4rem 0}
     .hint{font-size:.7rem;color:var(--text-mute);margin-top:-.75rem;margin-bottom:1rem}
 
+    @media(max-width:1080px){
+      .layout-grid{grid-template-columns:1fr}
+      .sidebar-col{position:static;top:auto}
+    }
     @media(max-width:520px){
       .mode-grid{grid-template-columns:1fr}
       .form-grid{grid-template-columns:1fr}
@@ -381,20 +390,25 @@ router.get("/u/:id", async (req: Request, res: Response): Promise<void> => {
       </div>
       <form method="post" action="/u/${id}/logout"><button class="btn btn-ghost">${icon("logout")} Đăng xuất</button></form>
     </header>
-    ${geminiOk}${modelSaved}${modelErr}${threadErr}
-    ${replyModeCard(id, user)}
-    ${promptCard(id, user, !!req.query["promptSaved"])}
-    ${fbBotErr}
-    ${fbBotCard(id, getTenantBotState(user.id))}
-    ${aiBlock}
-    <section class="card">
-      <div class="card-head"><div class="card-icon">${icon("message", 15)}</div><div><div class="card-title">Test Chat trực tiếp</div><div class="card-note">Thử ngay để xem AI sẽ trả lời như thế nào.</div></div></div>
-      <div id="messages" class="messages"><div class="msg bot">🤖 Sẵn sàng test với model Gemini của bạn.</div></div>
-      <form id="chat" class="chat-form">
-        <textarea id="prompt" required placeholder="Nhập tin nhắn test..." rows="1"></textarea>
-        <button id="sbtn" type="submit" class="btn btn-primary icon-btn" style="width:44px;height:44px;border-radius:9px">${icon("send", 16)}</button>
-      </form>
-    </section>
+    ${geminiOk}${modelSaved}${modelErr}${threadErr}${fbBotErr}
+    <div class="layout-grid">
+      <div class="col-stack">
+        ${replyModeCard(id, user)}
+        ${promptCard(id, user, !!req.query["promptSaved"])}
+        ${fbBotCard(id, getTenantBotState(user.id))}
+      </div>
+      <div class="col-stack sidebar-col">
+        ${aiBlock}
+        <section class="card">
+          <div class="card-head"><div class="card-icon">${icon("message", 15)}</div><div><div class="card-title">Test Chat trực tiếp</div><div class="card-note">Thử ngay để xem AI sẽ trả lời như thế nào.</div></div></div>
+          <div id="messages" class="messages"><div class="msg bot">🤖 Sẵn sàng test với model Gemini của bạn.</div></div>
+          <form id="chat" class="chat-form">
+            <textarea id="prompt" required placeholder="Nhập tin nhắn test..." rows="1"></textarea>
+            <button id="sbtn" type="submit" class="btn btn-primary icon-btn" style="width:44px;height:44px;border-radius:9px">${icon("send", 16)}</button>
+          </form>
+        </section>
+      </div>
+    </div>
     <script>
       const m = document.querySelector("#messages"), f = document.querySelector("#chat"), p = document.querySelector("#prompt"), btn = document.querySelector("#sbtn");
       const escHtml = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
