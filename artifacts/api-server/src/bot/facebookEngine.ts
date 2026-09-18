@@ -92,13 +92,21 @@ export interface EngineOptions {
 // (autoReconnect) without ever surfacing an error through our callback, so
 // its own console output is the only place a broken MQTT connection shows
 // up at all.
+//
+// online:true — this maps directly to `chat_on` in the raw MQTT CONNECT
+// payload (see ws3-fca's listenMqtt.js: `chatOn = ctx.globalOptions.online`).
+// With it false, the connection told Facebook this session wasn't actively
+// "online" — plausibly why a fully healthy, correctly-subscribed connection
+// (verified via packet-level logging: subacks, pings, presence deltas all
+// flowing) never received a single new-message delta for a real, delivered
+// message. Worth the minor tradeoff of showing as "active" to contacts.
 const LOGIN_OPTIONS: Record<string, any> = {
   selfListen: false,
   listenEvents: false,
   updatePresence: false,
   autoMarkDelivery: false,
   autoMarkRead: false,
-  online: false,
+  online: true,
   logging: true,
 };
 
