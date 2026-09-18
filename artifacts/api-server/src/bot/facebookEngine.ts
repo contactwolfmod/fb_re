@@ -85,8 +85,13 @@ export interface EngineOptions {
 
 // selfListen/listenEvents off → we only ever receive real "message" /
 // "message_reply" events, not our own echoes or thread-event noise.
-// logging:false silences ws3-fca's own console output (colored [LOG]/[ERROR]
-// lines) — our blog() calls are the source of truth for `railway logs`.
+//
+// logging left ON (ws3-fca's own console.log/error output) — turning it off
+// hid the real cause of a silent "AI never replies" report: ws3-fca's mqtt
+// client swallows connection failures internally and retries
+// (autoReconnect) without ever surfacing an error through our callback, so
+// its own console output is the only place a broken MQTT connection shows
+// up at all.
 const LOGIN_OPTIONS: Record<string, any> = {
   selfListen: false,
   listenEvents: false,
@@ -94,7 +99,7 @@ const LOGIN_OPTIONS: Record<string, any> = {
   autoMarkDelivery: false,
   autoMarkRead: false,
   online: false,
-  logging: false,
+  logging: true,
 };
 
 /**
