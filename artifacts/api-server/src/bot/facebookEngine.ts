@@ -83,50 +83,60 @@ export interface EngineOptions {
   onUnresolvedThread?: (threadId: string) => Promise<string | null>;
 }
 
-// selfListen/listenEvents off → we only ever receive real "message" /
-// "message_reply" events, not our own echoes or thread-event noise.
-//
-// logging left ON (ws3-fca's own console.log/error output) — turning it off
-// hid the real cause of a silent "AI never replies" report: ws3-fca's mqtt
-// client swallows connection failures internally and retries
-// (autoReconnect) without ever surfacing an error through our callback, so
-// its own console output is the only place a broken MQTT connection shows
-// up at all.
-//
-// online:true — this maps directly to `chat_on` in the raw MQTT CONNECT
-// payload (see ws3-fca's listenMqtt.js: `chatOn = ctx.globalOptions.online`).
-// With it false, the connection told Facebook this session wasn't actively
-// "online" — plausibly why a fully healthy, correctly-subscribed connection
-// (verified via packet-level logging: subacks, pings, presence deltas all
-// flowing) never received a single new-message delta for a real, delivered
-// message. Worth the minor tradeoff of showing as "active" to contacts.
+// logging left ON (ws3-fca's own console.log/error output) — useful for
+// diagnosing login/session issues; harmless now that the engine no longer
+// depends on the MQTT stream this used to help debug.
 const LOGIN_OPTIONS: Record<string, any> = {
   selfListen: false,
   listenEvents: false,
   updatePresence: false,
   autoMarkDelivery: false,
   autoMarkRead: false,
-  online: true,
+  online: false,
   logging: true,
 };
 
+// How often to poll for new messages. See the class doc comment for why
+// this replaced MQTT push — this is a deliberate HTTP GraphQL request every
+// few seconds, not a bug to "optimize away".
+const POLL_INTERVAL_MS = 6000;
+// How many of the most-recently-active threads to check each poll. A new
+// message always bumps its thread to the top of this list, so this only
+// needs to comfortably exceed how many distinct conversations could
+// realistically be more recently active than the one that just got a reply.
+const POLL_THREAD_LIMIT = 20;
+
 /**
- * One logged-in Facebook Messenger session: login, listen for new messages
- * in real time (MQTT push, no polling), reply via AI. Each instance is
- * fully independent (its own session, dedupe state, persisted cookies file)
- * so the same class backs both the single shared admin bot and per-customer
- * tenant bots.
+ * One logged-in Facebook Messenger session: login, poll for new messages,
+ * reply via AI. Each instance is fully independent (its own session, dedupe
+ * state, persisted cookies file) so the same class backs both the single
+ * shared admin bot and per-customer tenant bots.
  *
- * Built on ws3-fca (HTTP + MQTT, no browser) — a Playwright-driven headless
- * Chromium implementation was replaced here because it reloaded Facebook's
- * full JS-based Messenger UI on a 5s poll loop, heavy enough to exhaust a
- * 1GB container running just one session (confirmed via `railway metrics` —
- * memory pinned at the service's actual limit) and crash-loop every ~20s.
- * An earlier attempt at this same migration used @xaviabot/fca-unofficial,
- * whose initial message-sync call (a graphqlbatch request Facebook's
- * anti-bot layer rejects from datacenter IPs) failed outright. ws3-fca
- * avoids that specific call in the common case by reading the initial sync
- * sequence ID straight out of the login page's HTML instead.
+ * Built on ws3-fca (HTTP-only here, no browser). This engine has been
+ * through two prior transports, both dead ends:
+ *
+ * 1. A Playwright-driven headless Chromium implementation reloaded
+ *    Facebook's full JS-based Messenger UI on a 5s poll loop — heavy enough
+ *    to exhaust a 1GB container running just one session (confirmed via
+ *    `railway metrics`: memory pinned at the service's limit) and
+ *    crash-loop every ~20s.
+ * 2. Real-time delivery over ws3-fca's MQTT connection (`listenMqtt`)
+ *    looked fully healthy at the protocol level — successful connect, every
+ *    topic subscription ACKed, a correctly captured sync-queue syncToken,
+ *    ping/pong keepalive, presence deltas all flowing (verified with
+ *    packet-level logging) — yet a real, confirmed-delivered message from
+ *    an existing Facebook friend never produced a single delta. Facebook
+ *    silently withholds real-time push for this class of connection rather
+ *    than erroring, which is a dead end no amount of protocol-level fixing
+ *    can get around.
+ *
+ * What *does* work reliably: plain HTTP GraphQL calls (`getThreadList`,
+ * `getThreadHistory`, `sendMessage`, login) — verified directly against the
+ * live account. So this engine polls `getThreadList` every
+ * POLL_INTERVAL_MS for threads with newer activity than last seen, and
+ * fetches the actual message via `getThreadHistory` when it finds one.
+ * Slower than real-time push by up to one poll interval, but it uses no
+ * browser and isn't subject to the MQTT restriction above.
  */
 export class FacebookBotEngine {
   private opts: EngineOptions;
@@ -134,8 +144,15 @@ export class FacebookBotEngine {
   private autostartFlagPath: string;
 
   private api: any = null;
-  private mqttEmitter: any = null;
-  // Cheap safety net — MQTT shouldn't double-deliver, but dedupe is nearly free.
+  private myUserID: string | null = null;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private pollInFlight = false;
+  // threadID -> last-seen thread activity timestamp (ms), so a poll only
+  // reacts to threads whose most recent activity is newer than what we've
+  // already processed.
+  private lastSeenTimestamp = new Map<string, number>();
+  // Cheap safety net against double-processing the same message across
+  // overlapping polls — dedupe is nearly free.
   private repliedMessageIds = new Set<string>();
 
   constructor(opts: EngineOptions) {
@@ -278,6 +295,7 @@ export class FacebookBotEngine {
 
   private onLoggedIn(api: any) {
     this.api = api;
+    this.myUserID = String(api.getCurrentUserID());
     this.saveAppState();
 
     try {
@@ -289,30 +307,55 @@ export class FacebookBotEngine {
     this.opts.state.startedAt = new Date();
     this.opts.state.error = null;
 
-    this.mqttEmitter = api.listenMqtt((err: any, message: any) => {
-      if (err) {
-        this.blog("error", { err: describeErr(err) }, "listenMqtt error — session likely invalidated");
-        this.opts.state.status = "error";
-        this.opts.state.error = "Mất kết nối phiên Messenger. Vui lòng khởi động lại bot.";
-        return;
-      }
-      if (!message) return;
-      this.blog("info", { type: message.type, threadId: message.threadID }, "MQTT event received");
-      if (message.type === "message" || message.type === "message_reply") {
-        // ws3-fca's own `isGroup` flag is unreliable: its realtime formatter
-        // sets it from Facebook's threadKey.threadFbId, which is also set
-        // for a 1-on-1 "message request" from someone not yet a contact —
-        // not just for real multi-person groups. participantIDs.length is
-        // the accurate signal (a real group has more than 2 people); fall
-        // back to the library's flag only if that field is missing.
-        const participantCount = Array.isArray(message.participantIDs) ? message.participantIDs.length : null;
-        const isGroup = participantCount !== null ? participantCount > 2 : !!message.isGroup;
-        this.handleMessage(message.threadID, isGroup, message.body ?? "", message.senderID, message.messageID)
-          .catch((e) => this.blog("error", { err: describeErr(e) }, "handleMessage threw"));
-      }
-    });
+    this.startPollLoop();
 
-    this.blog("info", { uid: api.getCurrentUserID() }, "Session ready — listening for messages");
+    this.blog("info", { uid: this.myUserID }, "Session ready — polling for messages");
+  }
+
+  private startPollLoop(): void {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    // Prime lastSeenTimestamp with current thread activity before the first
+    // real poll, so existing conversation history never gets replayed as
+    // "new" messages on every restart.
+    this.pollOnce(/* prime */ true).catch((e) =>
+      this.blog("error", { err: describeErr(e) }, "Initial poll priming failed")
+    );
+    this.pollTimer = setInterval(() => {
+      this.pollOnce(false).catch((e) => this.blog("error", { err: describeErr(e) }, "Poll cycle threw"));
+    }, POLL_INTERVAL_MS);
+  }
+
+  private async pollOnce(prime: boolean): Promise<void> {
+    if (!this.api || this.pollInFlight) return;
+    this.pollInFlight = true;
+    try {
+      const threads = await this.api.getThreadList(POLL_THREAD_LIMIT, null, ["INBOX"]);
+      if (!Array.isArray(threads)) return;
+
+      for (const thread of threads) {
+        const threadId = String(thread.threadID);
+        const activity = Number(thread.timestamp) || 0;
+        const lastSeen = this.lastSeenTimestamp.get(threadId) ?? 0;
+        if (activity <= lastSeen) continue;
+        this.lastSeenTimestamp.set(threadId, activity);
+
+        if (prime) continue; // Seed only — don't reply to pre-existing history.
+        if (thread.isGroup) continue; // handleMessage also checks this, but skip the extra HTTP call.
+        if (thread.snippetID != null && String(thread.snippetID) === this.myUserID) continue; // last message was our own reply
+
+        try {
+          const history = await this.api.getThreadHistory(threadId, 1, null);
+          const lastMsg = Array.isArray(history) ? history[history.length - 1] : null;
+          if (!lastMsg || lastMsg.type !== "message") continue;
+          if (String(lastMsg.senderID) === this.myUserID) continue;
+          await this.handleMessage(threadId, !!lastMsg.isGroup, lastMsg.body ?? "", String(lastMsg.senderID), String(lastMsg.messageID));
+        } catch (e) {
+          this.blog("error", { err: describeErr(e), threadId }, "getThreadHistory failed during poll");
+        }
+      }
+    } finally {
+      this.pollInFlight = false;
+    }
   }
 
   /** Check whether a saved session + autostart flag exist for auto-restart. */
@@ -369,10 +412,11 @@ export class FacebookBotEngine {
   }
 
   stop(): void {
-    try { this.mqttEmitter?.stop(); } catch {}
+    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
     try { this.api?.logout?.().catch(() => {}); } catch {}
     this.api = null;
-    this.mqttEmitter = null;
+    this.myUserID = null;
+    this.lastSeenTimestamp.clear();
     this.opts.state.status = "stopped";
     this.opts.state.error = null;
     // Remove autostart flag so server won't restart bot on next reboot
