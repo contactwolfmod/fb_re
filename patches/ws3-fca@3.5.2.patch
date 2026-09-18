@@ -1,5 +1,5 @@
 diff --git a/src/deltas/apis/mqtt/listenMqtt.js b/src/deltas/apis/mqtt/listenMqtt.js
-index d894da27892a933f28673c81c109033415a6fd23..9da8db44af5379ab2092b5b56b5c2bd56e476399 100644
+index d894da27892a933f28673c81c109033415a6fd23..6f47e0cd20e1de06c9389675e4443c2fdde12442 100644
 --- a/src/deltas/apis/mqtt/listenMqtt.js	
 +++ b/src/deltas/apis/mqtt/listenMqtt.js	
 @@ -131,9 +131,19 @@ async function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
@@ -23,7 +23,7 @@ index d894da27892a933f28673c81c109033415a6fd23..9da8db44af5379ab2092b5b56b5c2bd5
          const queue = { sync_api_version: 10, max_deltas_able_to_process: 1000, delta_batch_size: 500, encoding: "JSON", entity_fbid: ctx.userID };
          let topic;
          if (ctx.syncToken) {
-@@ -166,6 +176,7 @@ async function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
+@@ -166,10 +176,26 @@ async function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
      }
  
      mqttClient.on('message', async (topic, message, _packet) => {
@@ -31,6 +31,25 @@ index d894da27892a933f28673c81c109033415a6fd23..9da8db44af5379ab2092b5b56b5c2bd5
          try {
              const jsonMessage = JSON.parse(message.toString());
              //const packet = JSON.parse(_packet.payload.toString());
+             if (topic === "/t_ms") {
++                // PATCHED: log the raw shape + capture syncToken. Facebook's
++                // messenger_sync_create_queue response carries a syncToken
++                // (and firstDeltaSeqId) that must be stored on ctx and reused
++                // via messenger_sync_get_diffs — ws3-fca never did this,
++                // unlike reference implementations (e.g. fbchat). Without
++                // it, the sync queue this client registers may not stay
++                // considered "live" by Facebook's backend for real-time push.
++                utils.log("t_ms keys", JSON.stringify(Object.keys(jsonMessage)));
++                if (jsonMessage.syncToken) {
++                    ctx.syncToken = jsonMessage.syncToken;
++                    utils.log("t_ms captured syncToken", ctx.syncToken);
++                }
++                if (jsonMessage.firstDeltaSeqId) {
++                    ctx.lastSeqId = parseInt(jsonMessage.firstDeltaSeqId);
++                }
+                 if (jsonMessage.lastIssuedSeqId){
+                     ctx.lastSeqId = parseInt(jsonMessage.lastIssuedSeqId);
+                 }
 diff --git a/src/utils/clients.js b/src/utils/clients.js
 index 548b15f50afbd6d15a733ea785e0922251453dde..fd7a3f21b4ffe6c4d9838459857b91ceb59420f4 100644
 --- a/src/utils/clients.js	
