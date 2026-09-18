@@ -154,7 +154,7 @@ overrides:
   esbuild: 0.27.3
 
 patchedDependencies:
-  ws3-fca@3.5.2: 576b05e62e7bd48bd778087b0bd0dbe414bbc6fa6645bacb51787d0d4105630c
+  ws3-fca@3.5.2: 4ba309864e9a89838555e1310394c4284334d40d28d29bc4e9abf10342ee5abe
 
 importers:
 
@@ -204,7 +204,7 @@ importers:
         version: 1.59.1
       ws3-fca:
         specifier: ^3.5.2
-        version: 3.5.2(patch_hash=576b05e62e7bd48bd778087b0bd0dbe414bbc6fa6645bacb51787d0d4105630c)
+        version: 3.5.2(patch_hash=4ba309864e9a89838555e1310394c4284334d40d28d29bc4e9abf10342ee5abe)
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10
@@ -7362,7 +7362,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws3-fca@3.5.2(patch_hash=576b05e62e7bd48bd778087b0bd0dbe414bbc6fa6645bacb51787d0d4105630c):
+  ws3-fca@3.5.2(patch_hash=4ba309864e9a89838555e1310394c4284334d40d28d29bc4e9abf10342ee5abe):
     dependencies:
       axios: 1.20.0
       axios-cookiejar-support: 4.0.7(axios@1.20.0)(tough-cookie@5.1.2)(undici@5.29.0)

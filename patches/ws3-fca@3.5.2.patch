@@ -1,3 +1,36 @@
+diff --git a/src/deltas/apis/mqtt/listenMqtt.js b/src/deltas/apis/mqtt/listenMqtt.js
+index d894da27892a933f28673c81c109033415a6fd23..9da8db44af5379ab2092b5b56b5c2bd56e476399 100644
+--- a/src/deltas/apis/mqtt/listenMqtt.js	
++++ b/src/deltas/apis/mqtt/listenMqtt.js	
+@@ -131,9 +131,19 @@ async function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
+         if (ctx.globalOptions.autoReconnect) getSeqID();
+         else globalCallback({ type: "stop_listen", error: "Connection refused" });
+     });
++    // PATCHED: diagnostics — none of these were logged before, so a silent
++    // drop/close/reconnect after a successful initial connect was invisible.
++    mqttClient.on('close', () => utils.error("listenMqtt", "mqtt CLOSE event"));
++    mqttClient.on('offline', () => utils.error("listenMqtt", "mqtt OFFLINE event"));
++    mqttClient.on('reconnect', () => utils.error("listenMqtt", "mqtt RECONNECT event"));
++    mqttClient.on('end', () => utils.error("listenMqtt", "mqtt END event"));
++    mqttClient.on('packetreceive', (packet) => utils.log("mqtt packetreceive", packet.cmd));
+ 
+     mqttClient.on('connect', async () => {
+-        topics.forEach(topic => mqttClient.subscribe(topic));
++        topics.forEach(topic => mqttClient.subscribe(topic, (err, granted) => {
++            if (err) utils.error("listenMqtt subscribe", topic, err);
++            else utils.log("listenMqtt subscribed", JSON.stringify(granted));
++        }));
+         const queue = { sync_api_version: 10, max_deltas_able_to_process: 1000, delta_batch_size: 500, encoding: "JSON", entity_fbid: ctx.userID };
+         let topic;
+         if (ctx.syncToken) {
+@@ -166,6 +176,7 @@ async function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
+     }
+ 
+     mqttClient.on('message', async (topic, message, _packet) => {
++        utils.log("mqtt message on topic", topic);
+         try {
+             const jsonMessage = JSON.parse(message.toString());
+             //const packet = JSON.parse(_packet.payload.toString());
 diff --git a/src/utils/clients.js b/src/utils/clients.js
 index 548b15f50afbd6d15a733ea785e0922251453dde..fd7a3f21b4ffe6c4d9838459857b91ceb59420f4 100644
 --- a/src/utils/clients.js	
