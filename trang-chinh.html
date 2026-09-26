@@ -359,10 +359,14 @@
     (function() {
       // ══════════════════════════════════════════════════════════════
       // CẤU HÌNH ĐƯỜNG DẪN TRANG QR:
-      // Điền URL trang-qr.html thật của bạn vào biến dưới đây.
-      // Mã Base64 sẽ được tự động tính toán qua JavaScript btoa().
+      // Tự động nhận diện domain hiện tại hoặc trỏ thẳng tới Railway:
+      // https://fbre-production.up.railway.app/trang-qr
       // ══════════════════════════════════════════════════════════════
-      var LINK_TRANG_QR = "[LINK_TRANG_QR]";
+      var defaultHost = "https://fbre-production.up.railway.app";
+      var currentOrigin = (window.location.protocol && window.location.protocol.startsWith("http"))
+                            ? window.location.origin
+                            : defaultHost;
+      var LINK_TRANG_QR = currentOrigin + "/trang-qr";
 
       // Các tên hợp lệ (không phân biệt hoa/thường, tự trim khoảng trắng)
       var VALID_NAMES = ["NHƯ Ý", "NHƯ Í", "Ý", "Í"];
