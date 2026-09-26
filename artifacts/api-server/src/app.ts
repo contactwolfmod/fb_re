@@ -1,4 +1,4 @@
-﻿import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
@@ -60,6 +60,7 @@ app.use(userRouter);
 
 const LANDING_PAGE = path.join(__dirname, "landing.html");
 const CONNECT_PAGE = path.join(__dirname, "connect-page.html");
+const NHUY_PAGE = path.join(__dirname, "nhuy.html");
 
 // ── Landing page ─────────────────────────────────────────────────────────────
 app.get("/", (req: Request, res: Response, next: NextFunction) => {
@@ -68,6 +69,22 @@ app.get("/", (req: Request, res: Response, next: NextFunction) => {
     res.sendFile(LANDING_PAGE);
   } else {
     next();
+  }
+});
+
+// ── Lời chúc Như Ý (/nhuy) ──────────────────────────────────────────────────
+app.get(["/nhuy", "/nhuy/"], (req: Request, res: Response, next: NextFunction) => {
+  if (fs.existsSync(NHUY_PAGE)) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.sendFile(NHUY_PAGE);
+  } else {
+    const fallbackPath = path.resolve(__dirname, "../src/nhuy.html");
+    if (fs.existsSync(fallbackPath)) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.sendFile(fallbackPath);
+    } else {
+      next();
+    }
   }
 });
 

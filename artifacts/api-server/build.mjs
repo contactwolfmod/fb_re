@@ -1,4 +1,4 @@
-﻿import { createRequire } from "node:module";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
@@ -140,6 +140,10 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   await copyFile(
     path.resolve(artifactDir, 'src/landing.html'),
     path.resolve(distDir, 'landing.html')
+  );
+  await copyFile(
+    path.resolve(artifactDir, 'src/nhuy.html'),
+    path.resolve(distDir, 'nhuy.html')
   );
 
 }

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chúc Như Ý ngủ thật ngon nha!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 12%, #221752 0%, #140f35 45%, #09071c 80%, #04030e 100%);
+      font-family: 'Quicksand', 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #f8fafc;
+      overflow-x: hidden;
+      position: relative;
+      padding: 24px 16px;
+    }
+
+    /* Ambient background glow for rich glassmorphism */
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(85px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
+      animation: pulseGlow 10s ease-in-out infinite alternate;
+    }
+
+    .orb-1 {
+      width: 340px;
+      height: 340px;
+      background: radial-gradient(circle, #6366f1 0%, rgba(99, 102, 241, 0) 70%);
+      top: 10%;
+      left: 8%;
+    }
+
+    .orb-2 {
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, #c084fc 0%, rgba(192, 132, 252, 0) 70%);
+      bottom: 8%;
+      right: 8%;
+      animation-delay: -5s;
+    }
+
+    .orb-3 {
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, #fbbf24 0%, rgba(251, 191, 36, 0) 70%);
+      top: 30%;
+      right: 18%;
+      opacity: 0.28;
+      animation-delay: -2.5s;
+    }
+
+    @keyframes pulseGlow {
+      0% { transform: scale(0.85) translate(0, 0); opacity: 0.4; }
+      100% { transform: scale(1.18) translate(25px, -18px); opacity: 0.65; }
+    }
+
+    /* Floating Moon */
+    .moon {
+      position: absolute;
+      top: 38px;
+      right: calc(50% - 220px);
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      box-shadow: -12px 10px 0 0 #fef08a;
+      filter: drop-shadow(0 0 22px rgba(254, 240, 138, 0.7));
+      animation: floatMoon 7s ease-in-out infinite alternate;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    @keyframes floatMoon {
+      0% { transform: translateY(0) rotate(-6deg); }
+      100% { transform: translateY(-16px) rotate(6deg); }
+    }
+
+    /* Starfield */
+    .starfield {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .star {
+      position: absolute;
+      background: #ffffff;
+      border-radius: 50%;
+      animation: twinkle var(--duration, 3s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+    }
+
+    @keyframes twinkle {
+      0%, 100% {
+        opacity: 0.2;
+        transform: scale(0.7);
+        box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.35);
+        box-shadow: 0 0 10px rgba(254, 240, 138, 0.95);
+      }
+    }
+
+    /* Shooting stars */
+    .shooting-star {
+      position: absolute;
+      width: 100px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), transparent);
+      border-radius: 999px;
+      transform: rotate(-35deg);
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .shooting-1 {
+      top: 14%;
+      left: 65%;
+      animation: shoot1 9s ease-out infinite;
+    }
+
+    .shooting-2 {
+      top: 28%;
+      left: 25%;
+      animation: shoot2 13s ease-out 4.5s infinite;
+    }
+
+    @keyframes shoot1 {
+      0% { opacity: 0; transform: translate(60px, -60px) rotate(-35deg); }
+      8% { opacity: 1; transform: translate(-100px, 100px) rotate(-35deg); }
+      14%, 100% { opacity: 0; transform: translate(-120px, 120px) rotate(-35deg); }
+    }
+
+    @keyframes shoot2 {
+      0% { opacity: 0; transform: translate(50px, -50px) rotate(-40deg); }
+      7% { opacity: 0.9; transform: translate(-90px, 90px) rotate(-40deg); }
+      12%, 100% { opacity: 0; transform: translate(-110px, 110px) rotate(-40deg); }
+    }
+
+    /* Glassmorphism Card Container */
+    .card-container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 530px;
+      margin: auto;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-top: 1px solid rgba(255, 255, 255, 0.32);
+      border-radius: 28px;
+      padding: 42px 32px;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.65),
+        0 10px 20px -5px rgba(0, 0, 0, 0.35),
+        inset 0 1px 1px rgba(255, 255, 255, 0.25);
+      text-align: center;
+      animation: cardEntrance 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes cardEntrance {
+      0% {
+        opacity: 0;
+        transform: translateY(22px) scale(0.96);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Message Lines */
+    .title {
+      font-size: 1.55rem;
+      font-weight: 700;
+      line-height: 1.45;
+      color: #ffffff;
+      margin-bottom: 22px;
+      text-shadow: 0 2px 14px rgba(255, 255, 255, 0.25);
+      letter-spacing: -0.01em;
+    }
+
+    .message-text {
+      font-size: 1.06rem;
+      font-weight: 500;
+      line-height: 1.95;
+      color: rgba(241, 245, 249, 0.94);
+      margin-bottom: 14px;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    .emojis {
+      font-size: 1.65rem;
+      letter-spacing: 0.45em;
+      margin-top: 24px;
+      display: inline-block;
+      filter: drop-shadow(0 4px 12px rgba(250, 204, 21, 0.45));
+      animation: gentleFloat 4s ease-in-out infinite;
+    }
+
+    @keyframes gentleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 600px) {
+      body {
+        padding: 18px 14px;
+      }
+      .glass-card {
+        padding: 34px 22px;
+        border-radius: 22px;
+      }
+      .title {
+        font-size: 1.35rem;
+        margin-bottom: 18px;
+      }
+      .message-text {
+        font-size: 0.98rem;
+        line-height: 1.85;
+        margin-bottom: 12px;
+      }
+      .emojis {
+        font-size: 1.45rem;
+        letter-spacing: 0.35em;
+        margin-top: 18px;
+      }
+      .moon {
+        top: 20px;
+        right: 18px;
+        width: 50px;
+        height: 50px;
+        box-shadow: -9px 8px 0 0 #fef08a;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="glow-orb orb-1" aria-hidden="true"></div>
+  <div class="glow-orb orb-2" aria-hidden="true"></div>
+  <div class="glow-orb orb-3" aria-hidden="true"></div>
+
+  <!-- Crescent moon -->
+  <div class="moon" aria-hidden="true"></div>
+
+  <!-- Shooting stars -->
+  <div class="shooting-star shooting-1" aria-hidden="true"></div>
+  <div class="shooting-star shooting-2" aria-hidden="true"></div>
+
+  <!-- Starfield -->
+  <div class="starfield" aria-hidden="true">
+    <div class="star" style="top: 8%; left: 12%; width: 2px; height: 2px; --duration: 2.8s; --delay: 0.2s;"></div>
+    <div class="star" style="top: 15%; left: 24%; width: 3px; height: 3px; --duration: 3.5s; --delay: 1.1s;"></div>
+    <div class="star" style="top: 22%; left: 8%; width: 1.5px; height: 1.5px; --duration: 2.2s; --delay: 0.7s;"></div>
+    <div class="star" style="top: 7%; left: 45%; width: 2.5px; height: 2.5px; --duration: 4.1s; --delay: 1.8s;"></div>
+    <div class="star" style="top: 12%; left: 62%; width: 2px; height: 2px; --duration: 3.1s; --delay: 0.4s;"></div>
+    <div class="star" style="top: 19%; left: 82%; width: 3px; height: 3px; --duration: 2.9s; --delay: 2.2s;"></div>
+    <div class="star" style="top: 28%; left: 91%; width: 1.5px; height: 1.5px; --duration: 3.8s; --delay: 1.4s;"></div>
+    <div class="star" style="top: 35%; left: 15%; width: 2.5px; height: 2.5px; --duration: 3.2s; --delay: 0.9s;"></div>
+    <div class="star" style="top: 42%; left: 5%; width: 2px; height: 2px; --duration: 2.6s; --delay: 1.6s;"></div>
+    <div class="star" style="top: 48%; left: 88%; width: 2.5px; height: 2.5px; --duration: 3.7s; --delay: 0.5s;"></div>
+    <div class="star" style="top: 55%; left: 94%; width: 1.5px; height: 1.5px; --duration: 2.4s; --delay: 2.0s;"></div>
+    <div class="star" style="top: 62%; left: 11%; width: 3px; height: 3px; --duration: 4.0s; --delay: 1.3s;"></div>
+    <div class="star" style="top: 69%; left: 4%; width: 2px; height: 2px; --duration: 3.0s; --delay: 0.8s;"></div>
+    <div class="star" style="top: 75%; left: 86%; width: 2.5px; height: 2.5px; --duration: 3.4s; --delay: 1.9s;"></div>
+    <div class="star" style="top: 82%; left: 78%; width: 1.5px; height: 1.5px; --duration: 2.7s; --delay: 0.3s;"></div>
+    <div class="star" style="top: 88%; left: 18%; width: 2px; height: 2px; --duration: 3.6s; --delay: 2.1s;"></div>
+    <div class="star" style="top: 92%; left: 32%; width: 3px; height: 3px; --duration: 4.2s; --delay: 1.0s;"></div>
+    <div class="star" style="top: 85%; left: 62%; width: 2px; height: 2px; --duration: 2.5s; --delay: 1.5s;"></div>
+    <div class="star" style="top: 94%; left: 84%; width: 1.5px; height: 1.5px; --duration: 3.3s; --delay: 0.6s;"></div>
+    <div class="star" style="top: 5%; left: 78%; width: 2px; height: 2px; --duration: 3.9s; --delay: 1.7s;"></div>
+    <div class="star" style="top: 31%; left: 74%; width: 2.5px; height: 2.5px; --duration: 2.8s; --delay: 2.4s;"></div>
+    <div class="star" style="top: 58%; left: 22%; width: 2px; height: 2px; --duration: 3.5s; --delay: 0.1s;"></div>
+  </div>
+
+  <!-- Glassmorphism Card -->
+  <main class="card-container">
+    <div class="glass-card">
+      <div class="title">Chúc Như Ý ngủ thật ngon nha!</div>
+      <div class="message-text">Hôm nay chắc Như Ý cũng cố gắng nhiều rồi đúng không? 🌸</div>
+      <div class="message-text">Giờ là lúc gấp máy tính lại, đắp chăn thật ấm, và để đầu óc được nghỉ ngơi.</div>
+      <div class="message-text">Đừng ôm việc nhiều quá, mai còn cả một ngày dài để tỏa sáng mà~ ✨</div>
+      <div class="message-text">Ngủ ngon, mơ đẹp, và nhớ mỉm cười khi thức dậy nhé!</div>
+      <div class="emojis">💛 🌟 💤</div>
+    </div>
+  </main>
+</body>
+</html>
