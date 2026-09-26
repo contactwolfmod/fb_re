@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🗺️ Bản Đồ Kho Báu Chữ</title>
+  <!-- Thư viện tạo mã QR qua CDN chính thức -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    /* Reset & Khởi tạo */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f4ecd8;
+      background-image: 
+        radial-gradient(#c9a15a 0.75px, transparent 0.75px),
+        radial-gradient(#d5b882 0.75px, #f4ecd8 0.75px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      color: #3b220e;
+      font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
+      min-height: 100vh;
+      padding: 30px 16px 80px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    /* Tiêu đề chính kiểu bản đồ cổ */
+    .map-header {
+      text-align: center;
+      margin-bottom: 28px;
+      position: relative;
+    }
+
+    .map-title {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4a2810;
+      text-shadow: 1px 1px 2px rgba(201, 161, 90, 0.4);
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+    }
+
+    .map-subtitle {
+      font-size: 0.95rem;
+      color: #7a5028;
+      font-style: italic;
+    }
+
+    .map-divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #c9a15a, #8b5a2b, #c9a15a, transparent);
+      margin: 14px auto 0;
+      width: 75%;
+    }
+
+    /* Hộp thẻ phong cách giấy da cổ (Parchment Card) */
+    .parchment-card {
+      background: #fffcf4;
+      border: 2px solid #c9a15a;
+      border-radius: 12px;
+      box-shadow: 
+        0 6px 20px rgba(78, 52, 26, 0.12),
+        inset 0 0 35px rgba(201, 161, 90, 0.08);
+      padding: 26px 22px;
+      margin-bottom: 26px;
+      position: relative;
+      outline: 1px dashed #d5b882;
+      outline-offset: -7px;
+      animation: fadeIn 0.6s ease-out both;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-heading {
+      font-size: 1.25rem;
+      color: #4a2810;
+      margin-bottom: 14px;
+      text-align: center;
+      font-weight: bold;
+      letter-spacing: 0.01em;
+    }
+
+    /* Form & Input */
+    .form-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .input-parchment {
+      flex: 1;
+      background: #fdfaf3;
+      border: 1.5px solid #c9a15a;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      color: #2c1810;
+      outline: none;
+      transition: all 0.25s ease;
+      box-shadow: inset 0 2px 4px rgba(78, 52, 26, 0.06);
+    }
+
+    .input-parchment:focus {
+      border-color: #8b5a2b;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(201, 161, 90, 0.25);
+    }
+
+    .input-parchment::placeholder {
+      color: #a08263;
+      font-style: italic;
+    }
+
+    .btn-treasure {
+      background: linear-gradient(180deg, #d4aa5d 0%, #aa7e35 100%);
+      color: #ffffff;
+      border: 1.5px solid #7d541b;
+      border-radius: 8px;
+      padding: 12px 22px;
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(125, 84, 27, 0.3);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-treasure:hover {
+      background: linear-gradient(180deg, #deb76b 0%, #ba8b3e 100%);
+      box-shadow: 0 4px 12px rgba(125, 84, 27, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-treasure:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 4px rgba(125, 84, 27, 0.3);
+    }
+
+    /* Thông báo kết quả */
+    .msg-feedback {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      text-align: center;
+      font-weight: bold;
+      display: none;
+    }
+
+    .msg-success {
+      background-color: #eaf6ec;
+      border: 1px solid #72c082;
+      color: #1e7e34;
+      display: block;
+    }
+
+    .msg-error {
+      background-color: #fdf0f0;
+      border: 1px solid #e89898;
+      color: #b91c1c;
+      display: block;
+    }
+
+    /* Thẻ câu đố Bước 2 */
+    .riddle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .riddle-item {
+      background: #fcf6e8;
+      border: 1px solid #e0c896;
+      border-left: 4px solid #aa7e35;
+      border-radius: 8px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 6px rgba(78, 52, 26, 0.05);
+    }
+
+    .riddle-tag {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #8b5a2b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .riddle-text {
+      font-size: 1rem;
+      color: #3b220e;
+    }
+
+    /* Cuộn mật mã Base64 Bước 3 */
+    .cipher-scroll {
+      background: #f7eedb;
+      border: 2px dashed #b89355;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 18px 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .cipher-code {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1.45rem;
+      font-weight: bold;
+      color: #5c2f0f;
+      letter-spacing: 0.15em;
+      background: #fffdf8;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #d5b882;
+      display: inline-block;
+      user-select: all;
+      word-break: break-all;
+    }
+
+    .metaphor-text {
+      font-style: italic;
+      color: #54371e;
+      font-size: 1rem;
+      line-height: 1.7;
+      text-align: center;
+      margin: 16px 0;
+    }
+
+    /* Dòng chữ ẩn chứa anchor link #mat-ngu */
+    .hidden-anchor-box {
+      text-align: center;
+      margin-top: 22px;
+      padding-top: 12px;
+    }
+
+    .hidden-anchor-link {
+      color: #926f4b;
+      text-decoration: none;
+      font-style: italic;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .hidden-anchor-link:hover {
+      color: #4a2810;
+      background: rgba(201, 161, 90, 0.15);
+      text-shadow: 0 0 8px rgba(201, 161, 90, 0.4);
+    }
+
+    /* Bước 4 — Khu vực mã QR */
+    #mat-ngu {
+      display: none;
+      scroll-margin-top: 30px;
+    }
+
+    .qr-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 22px 0;
+    }
+
+    .qr-frame {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 12px;
+      border: 2px solid #c9a15a;
+      box-shadow: 0 4px 16px rgba(78, 52, 26, 0.15);
+      display: inline-block;
+    }
+
+    /* Điều chỉnh trên màn hình nhỏ */
+    @media (max-width: 480px) {
+      body {
+        padding: 20px 12px 60px;
+      }
+      .map-title {
+        font-size: 1.65rem;
+      }
+      .parchment-card {
+        padding: 20px 16px;
+      }
+      .form-row {
+        flex-direction: column;
+      }
+      .btn-treasure {
+        width: 100%;
+        padding: 12px;
+      }
+      .cipher-code {
+        font-size: 1.2rem;
+        letter-spacing: 0.1em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Tiêu đề bản đồ -->
+    <header class="map-header">
+      <h1 class="map-title">🗺️ Bản Đồ Kho Báu Chữ</h1>
+      <p class="map-subtitle">Hành trình truy tìm mật ngữ cổ xưa</p>
+      <div class="map-divider"></div>
+    </header>
+
+    <!-- BƯỚC 1 — Cổng vào (Name gate) -->
+    <section id="step1" class="parchment-card">
+      <h2 class="card-heading">🚪 Cổng Vào Kho Báu</h2>
+      <div class="form-row">
+        <input type="text" id="nameInput" class="input-parchment" placeholder="Tên của bạn..." autocomplete="off">
+        <button type="button" id="btnEnter" class="btn-treasure">Vào</button>
+      </div>
+      <div id="nameFeedback" class="msg-feedback"></div>
+    </section>
+
+    <!-- BƯỚC 2 — 3 câu đố suy luận (ẩn ban đầu) -->
+    <section id="step2" class="parchment-card" style="display: none;">
+      <h2 class="card-heading">🧩 Ba Ẩn Đố Thời Gian</h2>
+      
+      <div class="riddle-list">
+        <!-- Thẻ 1 -->
+        <div class="riddle-item">
+          <div class="riddle-tag">Ẩn Đố 1</div>
+          <div class="riddle-text">Có 125 chiếc bánh pizza, mỗi chiếc cắt 8 miếng. Tổng bao nhiêu miếng?</div>
+        </div>
+
+        <!-- Thẻ 2 -->
+        <div class="riddle-item">
+          <div class="riddle-tag">Ẩn Đố 2</div>
+          <div class="riddle-text">9 hộp, mỗi hộp 100 viên kẹo. Tổng bao nhiêu viên?</div>
+        </div>
+
+        <!-- Thẻ 3 -->
+        <div class="riddle-item">
+          <div class="riddle-tag">Ẩn Đố 3</div>
+          <div class="riddle-text">Một vòng quay mất 15 tuần. Đó là bao nhiêu ngày (1 tuần=7 ngày)?</div>
+        </div>
+      </div>
+
+      <div class="map-divider" style="margin-bottom: 18px;"></div>
+
+      <h3 class="card-heading" style="font-size: 1.1rem; margin-bottom: 8px;">Rương Kho Báu</h3>
+      <div class="form-row">
+        <input type="text" id="chestInput" class="input-parchment" placeholder="Nhập tổng mã số ba câu đố..." autocomplete="off">
+        <button type="button" id="btnOpenChest" class="btn-treasure">Mở rương</button>
+      </div>
+      <div id="chestFeedback" class="msg-feedback"></div>
+    </section>
+
+    <!-- BƯỚC 3 — Mật mã Base64 (ẩn ban đầu) -->
+    <section id="step3" class="parchment-card" style="display: none;">
+      <div id="step3Success" class="msg-feedback msg-success" style="margin-top: 0; margin-bottom: 16px;">
+        Chính xác! (Thú vị: đó cũng là năm YouTube ra đời)
+      </div>
+
+      <div class="cipher-scroll">
+        <div class="cipher-code">I21hdC1uZ3U=</div>
+      </div>
+
+      <p class="metaphor-text">
+        "Dòng mật văn này mang phong ấn của 64 ấn tộc. Đưa nó qua công cụ giải ảo của thế giới số, con đường giấu kín dẫn tới đích đến sẽ tự động mở ra."
+      </p>
+
+      <!-- Dòng chữ ẩn có href="#mat-ngu" -->
+      <div class="hidden-anchor-box">
+        <a href="#mat-ngu" id="hiddenAnchor" class="hidden-anchor-link">✦ Chạm nhẹ vào thinh không để bước tiếp... ✦</a>
+      </div>
+    </section>
+
+    <!-- BƯỚC 4 — Khu vực id="mat-ngu" (ẩn ban đầu) -->
+    <section id="mat-ngu" class="parchment-card">
+      <h2 class="card-heading">🧭 Mảnh Kho Báu Cuối Cùng</h2>
+      
+      <div class="qr-wrapper">
+        <div class="qr-frame">
+          <div id="qrcode"></div>
+        </div>
+      </div>
+
+      <p class="metaphor-text">
+        "Chạm ống kính vào ma trận đen trắng để đánh thức mật ngữ bên trong."
+      </p>
+    </section>
+  </div>
+
+  <script>
+    (function() {
+      // Các tên hợp lệ (không phân biệt hoa/thường, tự trim khoảng trắng)
+      var VALID_NAMES = ["NHƯ Ý", "NHƯ Í", "Ý", "Í"];
+      var CHEST_CODE = "2005";
+      var QR_TEXT = "yuhn/ppa.yawliar.pu.noitcudorp-erbf//:sptth";
+
+      var step1 = document.getElementById("step1");
+      var step2 = document.getElementById("step2");
+      var step3 = document.getElementById("step3");
+      var step4 = document.getElementById("mat-ngu");
+
+      var nameInput = document.getElementById("nameInput");
+      var btnEnter = document.getElementById("btnEnter");
+      var nameFeedback = document.getElementById("nameFeedback");
+
+      var chestInput = document.getElementById("chestInput");
+      var btnOpenChest = document.getElementById("btnOpenChest");
+      var chestFeedback = document.getElementById("chestFeedback");
+
+      var hiddenAnchor = document.getElementById("hiddenAnchor");
+      var qrGenerated = false;
+
+      // Hàm chuẩn hóa chuỗi tên
+      function normalize(str) {
+        if (!str) return "";
+        return str.trim().replace(/\s+/g, ' ').toUpperCase();
+      }
+
+      // Xử lý Bước 1: Name Gate
+      function handleNameGate() {
+        var val = normalize(nameInput.value);
+        if (VALID_NAMES.indexOf(val) !== -1) {
+          nameFeedback.className = "msg-feedback msg-success";
+          nameFeedback.textContent = "Chào mừng, Như Ý! Kho báu đang chờ bạn phía dưới ✨";
+          nameFeedback.style.display = "block";
+          nameInput.disabled = true;
+          btnEnter.disabled = true;
+
+          // Mở khóa Bước 2
+          step2.style.display = "block";
+          setTimeout(function() {
+            step2.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 200);
+        } else {
+          nameFeedback.className = "msg-feedback msg-error";
+          nameFeedback.textContent = "Tên không đúng, không thể vào kho báu.";
+          nameFeedback.style.display = "block";
+        }
+      }
+
+      btnEnter.addEventListener("click", handleNameGate);
+      nameInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") handleNameGate();
+      });
+
+      // Xử lý Bước 2: Rương Kho Báu
+      function handleChest() {
+        var val = (chestInput.value || "").trim();
+        if (val === CHEST_CODE) {
+          chestFeedback.style.display = "none";
+          chestInput.disabled = true;
+          btnOpenChest.disabled = true;
+
+          // Mở khóa Bước 3
+          step3.style.display = "block";
+          setTimeout(function() {
+            step3.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 200);
+        } else {
+          chestFeedback.className = "msg-feedback msg-error";
+          chestFeedback.textContent = "Mã rương chưa chính xác, hãy cộng lại ba câu đố cẩn thận nhé!";
+          chestFeedback.style.display = "block";
+        }
+      }
+
+      btnOpenChest.addEventListener("click", handleChest);
+      chestInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") handleChest();
+      });
+
+      // Tạo mã QR an toàn
+      function createQrCode() {
+        if (qrGenerated) return;
+        var qrElem = document.getElementById("qrcode");
+        if (!qrElem) return;
+
+        if (typeof QRCode !== "undefined") {
+          qrElem.innerHTML = "";
+          new QRCode(qrElem, {
+            text: QR_TEXT,
+            width: 200,
+            height: 200,
+            colorDark: "#2c1810",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+          qrGenerated = true;
+        } else {
+          setTimeout(createQrCode, 200);
+        }
+      }
+
+      // Xử lý Bước 4: Mở khóa #mat-ngu
+      function unlockStep4() {
+        step4.style.display = "block";
+        createQrCode();
+        setTimeout(function() {
+          step4.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 150);
+      }
+
+      // Khi bấm vào dòng chữ ẩn
+      hiddenAnchor.addEventListener("click", function(e) {
+        unlockStep4();
+      });
+
+      // Lắng nghe thay đổi hash trên URL (nếu người chơi tự gõ #mat-ngu vào thanh địa chỉ)
+      function checkHash() {
+        var hash = (window.location.hash || "").toLowerCase();
+        if (hash === "#mat-ngu") {
+          // Đảm bảo các bước trước cũng được hiển thị nếu người chơi nhảy thẳng hash
+          step2.style.display = "block";
+          step3.style.display = "block";
+          unlockStep4();
+        }
+      }
+
+      window.addEventListener("hashchange", checkHash);
+      // Kiểm tra ngay khi tải trang
+      if ((window.location.hash || "").toLowerCase() === "#mat-ngu") {
+        checkHash();
+      }
+    })();
+  </script>
+</body>
+</html>

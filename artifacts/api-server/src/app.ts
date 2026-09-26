@@ -61,6 +61,7 @@ app.use(userRouter);
 const LANDING_PAGE = path.join(__dirname, "landing.html");
 const CONNECT_PAGE = path.join(__dirname, "connect-page.html");
 const NHUY_PAGE = path.join(__dirname, "nhuy.html");
+const KHO_BAU_PAGE = path.join(__dirname, "kho-bau.html");
 
 // ── Landing page ─────────────────────────────────────────────────────────────
 app.get("/", (req: Request, res: Response, next: NextFunction) => {
@@ -79,6 +80,22 @@ app.get(["/nhuy", "/nhuy/"], (req: Request, res: Response, next: NextFunction) =
     res.sendFile(NHUY_PAGE);
   } else {
     const fallbackPath = path.resolve(__dirname, "../src/nhuy.html");
+    if (fs.existsSync(fallbackPath)) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.sendFile(fallbackPath);
+    } else {
+      next();
+    }
+  }
+});
+
+// ── Bản đồ kho báu chữ (/kho-bau) ───────────────────────────────────────────
+app.get(["/kho-bau", "/kho-bau/"], (req: Request, res: Response, next: NextFunction) => {
+  if (fs.existsSync(KHO_BAU_PAGE)) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.sendFile(KHO_BAU_PAGE);
+  } else {
+    const fallbackPath = path.resolve(__dirname, "../src/kho-bau.html");
     if (fs.existsSync(fallbackPath)) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.sendFile(fallbackPath);
