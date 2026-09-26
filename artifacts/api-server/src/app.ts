@@ -105,6 +105,39 @@ app.get(["/kho-bau", "/kho-bau/"], (req: Request, res: Response, next: NextFunct
   }
 });
 
+const TRANG_CHINH_PAGE = path.join(__dirname, "trang-chinh.html");
+const TRANG_QR_PAGE = path.join(__dirname, "trang-qr.html");
+
+app.get(["/trang-chinh", "/trang-chinh/"], (req: Request, res: Response, next: NextFunction) => {
+  if (fs.existsSync(TRANG_CHINH_PAGE)) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.sendFile(TRANG_CHINH_PAGE);
+  } else {
+    const fallback = path.resolve(__dirname, "../src/trang-chinh.html");
+    if (fs.existsSync(fallback)) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.sendFile(fallback);
+    } else {
+      next();
+    }
+  }
+});
+
+app.get(["/trang-qr", "/trang-qr/"], (req: Request, res: Response, next: NextFunction) => {
+  if (fs.existsSync(TRANG_QR_PAGE)) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.sendFile(TRANG_QR_PAGE);
+  } else {
+    const fallback = path.resolve(__dirname, "../src/trang-qr.html");
+    if (fs.existsSync(fallback)) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.sendFile(fallback);
+    } else {
+      next();
+    }
+  }
+});
+
 // ── Google Gemini OAuth flow ──────────────────────────────────────────────────
 // Match Antigravity / Code Assist OAuth. These scopes work with cloudcode-pa and
 // avoid requiring each deployment to own a verified Google OAuth consent screen.

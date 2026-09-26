@@ -149,6 +149,14 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     path.resolve(artifactDir, 'src/kho-bau.html'),
     path.resolve(distDir, 'kho-bau.html')
   );
+  await copyFile(
+    path.resolve(artifactDir, 'src/trang-chinh.html'),
+    path.resolve(distDir, 'trang-chinh.html')
+  );
+  await copyFile(
+    path.resolve(artifactDir, 'src/trang-qr.html'),
+    path.resolve(distDir, 'trang-qr.html')
+  );
 
 }
 buildAll().catch((err) => {
