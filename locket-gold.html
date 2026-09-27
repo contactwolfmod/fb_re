@@ -80,7 +80,7 @@
       resultDiv.innerHTML = "<span class='info'>Đang phân giải UID và kiểm tra...</span>";
       
       try {
-        const res = await fetch('/api/check', {
+        const res = await fetch('/api-check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username })

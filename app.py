@@ -242,7 +242,7 @@ def kho_bau():
 def locketgold():
     return send_from_directory('.', 'locket-gold.html')
 
-@app.route('/api/check', methods=['POST'])
+@app.route('/api-check', methods=['POST'])
 def api_check():
     """API kiểm tra hạn dùng Locket Gold theo cơ chế locketgold.py"""
     data = request.get_json()

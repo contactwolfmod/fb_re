@@ -155,7 +155,7 @@ app.get(["/locket-gold", "/locket-gold/"], (req: Request, res: Response, next: N
   }
 });
 
-app.post("/api/check", async (req: Request, res: Response): Promise<void> => {
+app.post("/api-check", async (req: Request, res: Response): Promise<void> => {
   const username = req.body?.username?.trim();
   if (!username) {
     res.status(400).json({ success: false, message: "Vui lòng nhập username hoặc link." });
