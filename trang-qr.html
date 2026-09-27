@@ -149,7 +149,11 @@
       // Chuỗi này sẽ được tự động đảo ngược bằng JavaScript
       // để đưa vào mã QR (người chơi quét QR sẽ thấy chuỗi ngược).
       // ══════════════════════════════════════════════════════════════
-      var FINAL_TARGET_URL = "https://fbre-production.up.railway.app/nhuy";
+      var defaultHost = "https://fbre-production.up.railway.app";
+      var currentOrigin = (window.location.protocol && window.location.protocol.startsWith("http"))
+                            ? window.location.origin
+                            : defaultHost;
+      var FINAL_TARGET_URL = currentOrigin + "/nhuy";
 
       // Tự động đảo ngược chuỗi hoàn toàn bằng JavaScript
       var reversedUrl = FINAL_TARGET_URL.split('').reverse().join('');

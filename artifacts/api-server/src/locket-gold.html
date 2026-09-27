@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Kiểm tra Hạn Dùng Locket Gold</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0a0a0a;
+      color: #e8d5a3;
+      text-align: center;
+      padding: 40px 16px;
+      margin: 0;
+    }
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      background: linear-gradient(145deg, #150f00, #1e1500);
+      border: 1.5px solid rgba(201,161,90,0.5);
+      border-radius: 16px;
+      padding: 30px 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    h2 { margin-top: 0; color: #d4aa5d; }
+    p { color: #a3957a; font-size: 0.9rem; margin-bottom: 24px; }
+    input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(201,161,90,0.3);
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      font-size: 1rem;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    input:focus { border-color: #d4aa5d; }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #b8860b, #d4aa5d);
+      color: #000;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #result { margin-top: 24px; font-size: 1.05rem; font-weight: 500; line-height: 1.5; }
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    .info { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Kiểm Tra Hạn Gold 💛</h2>
+    <p>Nhập link hoặc username Locket để xem thời hạn</p>
+    
+    <input type="text" id="username" placeholder="Ví dụ: ngocquynh066" onkeydown="if(event.key==='Enter') checkGold()">
+    <button onclick="checkGold()" id="btnCheck">Kiểm tra hạn dùng</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function checkGold() {
+      const username = document.getElementById('username').value.trim();
+      const resultDiv = document.getElementById('result');
+      const btn = document.getElementById('btnCheck');
+      if (!username) return;
+      
+      btn.disabled = true;
+      btn.innerText = "Đang kiểm tra...";
+      resultDiv.innerHTML = "<span class='info'>Đang phân giải UID và kiểm tra...</span>";
+      
+      try {
+        const res = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          if (data.has_gold) {
+            resultDiv.innerHTML = `<span class='success'>✅ Tài khoản đang có Gold!<br>Hết hạn vào: <b>${data.expires}</b></span>`;
+          } else {
+            resultDiv.innerHTML = `<span class='error'>❌ Tài khoản chưa có Gold hoặc đã hết hạn.</span>`;
+          }
+        } else {
+          resultDiv.innerHTML = `<span class='error'>⚠️ Lỗi: ${data.message}</span>`;
+        }
+      } catch (e) {
+        resultDiv.innerHTML = `<span class='error'>⚠️ Lỗi kết nối server.</span>`;
+      }
+      
+      btn.disabled = false;
+      btn.innerText = "Kiểm tra hạn dùng";
+    }
+  </script>
+</body>
+</html>

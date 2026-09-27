@@ -222,6 +222,48 @@ def run_async(coro):
 def index():
     return send_from_directory('static', 'index.html')
 
+@app.route('/trang-chinh')
+def trang_chinh():
+    return send_from_directory('.', 'trang-chinh.html')
+
+@app.route('/trang-qr')
+def trang_qr():
+    return send_from_directory('.', 'trang-qr.html')
+
+@app.route('/nhuy')
+def nhuy():
+    return send_from_directory('nhuy', 'index.html')
+
+@app.route('/kho-bau')
+def kho_bau():
+    return send_from_directory('kho-bau', 'index.html')
+
+@app.route('/locket-gold')
+def locketgold():
+    return send_from_directory('.', 'locket-gold.html')
+
+@app.route('/api/check', methods=['POST'])
+def api_check():
+    """API kiểm tra hạn dùng Locket Gold theo cơ chế locketgold.py"""
+    data = request.get_json()
+    username = (data or {}).get('username', '').strip()
+    
+    if not username:
+        return jsonify({"success": False, "message": "Vui lòng nhập username hoặc link."}), 400
+        
+    try:
+        uid = run_async(resolve_uid(username))
+        if not uid:
+            return jsonify({"success": False, "message": "Không tìm thấy UID."}), 404
+            
+        status = run_async(check_status(uid))
+        if status and status.get('active'):
+            return jsonify({"success": True, "has_gold": True, "expires": status.get('expires')})
+        else:
+            return jsonify({"success": True, "has_gold": False, "message": "Chưa có Gold"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
 
 @app.route('/api/activate', methods=['POST'])
 def api_activate():
@@ -270,5 +312,5 @@ def api_activate():
 
 
 if __name__ == '__main__':
-    print("✨ Locket Gold Web đang chạy tại http://localhost:5000")
+    print("Locket Gold Web dang chay tai http://localhost:5000")
     app.run(host='0.0.0.0', port=5000, debug=False)

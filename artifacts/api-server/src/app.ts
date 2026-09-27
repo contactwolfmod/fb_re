@@ -138,6 +138,107 @@ app.get(["/trang-qr", "/trang-qr/"], (req: Request, res: Response, next: NextFun
   }
 });
 
+const LOCKET_GOLD_PAGE = path.join(__dirname, "locket-gold.html");
+
+app.get(["/locket-gold", "/locket-gold/"], (req: Request, res: Response, next: NextFunction) => {
+  if (fs.existsSync(LOCKET_GOLD_PAGE)) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.sendFile(LOCKET_GOLD_PAGE);
+  } else {
+    const fallback = path.resolve(__dirname, "../src/locket-gold.html");
+    if (fs.existsSync(fallback)) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.sendFile(fallback);
+    } else {
+      next();
+    }
+  }
+});
+
+app.post("/api/check", async (req: Request, res: Response): Promise<void> => {
+  const username = req.body?.username?.trim();
+  if (!username) {
+    res.status(400).json({ success: false, message: "Vui lòng nhập username hoặc link." });
+    return;
+  }
+
+  try {
+    let uid = username;
+    if (!/^[A-Za-z0-9]{28}$/.test(uid)) {
+      if (uid.startsWith("http")) {
+        const match = uid.match(/\/invites\/([A-Za-z0-9]{28})/);
+        if (match) uid = match[1];
+        else uid = uid.replace(/\/+$/, "").split("/").pop() || "";
+      }
+      
+      if (!/^[A-Za-z0-9]{28}$/.test(uid)) {
+        const locketRes = await fetch(`https://locket.cam/${uid}`, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+            "Accept": "text/html"
+          },
+          redirect: "follow"
+        });
+        const html = await locketRes.text();
+        const urlStr = locketRes.url;
+        const matchUrl = urlStr.match(/\/invites\/([A-Za-z0-9]{28})/);
+        const matchHtml = html.match(/\/invites\/([A-Za-z0-9]{28})/);
+        
+        let foundUid = matchUrl?.[1] || matchHtml?.[1];
+        if (!foundUid) {
+          const lpMatch = html.match(/link=([^\s"'<>]+)/);
+          if (lpMatch) {
+            const d = decodeURIComponent(lpMatch[1]);
+            const dm = d.match(/\/invites\/([A-Za-z0-9]{28})/);
+            if (dm) foundUid = dm[1];
+          }
+        }
+        
+        if (foundUid) uid = foundUid;
+        else {
+          res.status(404).json({ success: false, message: "Không tìm thấy UID." });
+          return;
+        }
+      }
+    }
+    
+    const revRes = await fetch(`https://api.revenuecat.com/v1/subscribers/${uid}`, {
+      headers: {
+        'Host': 'api.revenuecat.com',
+        'Authorization': 'Bearer appl_JngFETzdodyLmCREOlwTUtXdQik',
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'X-Platform': 'iOS',
+        'X-Platform-Version': 'Version 26.2 (Build 23C55)',
+        'X-Platform-Device': 'iPhone15,3',
+        'X-Platform-Flavor': 'native',
+        'X-Version': '5.41.0',
+        'X-Client-Version': '2.32.2',
+        'X-Client-Bundle-ID': 'com.locket.Locket',
+        'X-Client-Build-Version': '3',
+        'X-Storefront': 'VNM'
+      }
+    });
+    
+    if (revRes.status >= 200 && revRes.status < 300) {
+      const data: any = await revRes.json();
+      const gold = data?.subscriber?.entitlements?.Gold;
+      if (gold) {
+        res.json({ success: true, has_gold: true, expires: gold.expires_date });
+        return;
+      }
+      res.json({ success: true, has_gold: false, message: "Chưa có Gold" });
+      return;
+    }
+    res.json({ success: true, has_gold: false, message: "Server từ chối (có thể sai UID)" });
+    return;
+
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || "Lỗi server" });
+    return;
+  }
+});
+
 // ── Google Gemini OAuth flow ──────────────────────────────────────────────────
 // Match Antigravity / Code Assist OAuth. These scopes work with cloudcode-pa and
 // avoid requiring each deployment to own a verified Google OAuth consent screen.

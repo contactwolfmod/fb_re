@@ -409,7 +409,12 @@
       // Các tên hợp lệ (không phân biệt hoa/thường, tự trim khoảng trắng)
       var VALID_NAMES = ["NHƯ Ý", "NHƯ Í", "Ý", "Í"];
       var CHEST_CODE = "2005";
-      var QR_TEXT = "yuhn/ppa.yawliar.pu.noitcudorp-erbf//:sptth";
+      var defaultHost = "https://fbre-production.up.railway.app";
+      var currentOrigin = (window.location.protocol && window.location.protocol.startsWith("http"))
+                            ? window.location.origin
+                            : defaultHost;
+      var TARGET_URL = currentOrigin + "/nhuy";
+      var QR_TEXT = TARGET_URL.split('').reverse().join('');
 
       var step1 = document.getElementById("step1");
       var step2 = document.getElementById("step2");
