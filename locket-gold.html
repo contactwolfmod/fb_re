@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Kiểm tra Hạn Dùng Locket Gold</title>
+  <title>Kích hoạt Locket Gold</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -37,21 +37,54 @@
       outline: none;
     }
     input:focus { border-color: #d4aa5d; }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
     button {
-      width: 100%;
+      flex: 1;
       padding: 14px;
       border: none;
       border-radius: 8px;
-      background: linear-gradient(90deg, #b8860b, #d4aa5d);
-      color: #000;
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 0.95rem;
       cursor: pointer;
       transition: opacity 0.2s;
     }
+    
+    .btn-check {
+      background: rgba(201,161,90,0.2);
+      color: #d4aa5d;
+      border: 1px solid rgba(201,161,90,0.5);
+    }
+    
+    .btn-upgrade {
+      background: linear-gradient(90deg, #b8860b, #d4aa5d);
+      color: #000;
+    }
+    
     button:hover { opacity: 0.9; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
-    #result { margin-top: 24px; font-size: 1.05rem; font-weight: 500; line-height: 1.5; }
+    #result { margin-top: 10px; font-size: 1rem; font-weight: 500; line-height: 1.5; text-align: left; }
+    
+    .log-box {
+      margin-top: 15px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #a3957a;
+      text-align: left;
+      height: 150px;
+      overflow-y: auto;
+      display: none;
+    }
+    
     .success { color: #4ade80; }
     .error { color: #f87171; }
     .info { color: #60a5fa; }
@@ -59,25 +92,36 @@
 </head>
 <body>
   <div class="container">
-    <h2>Kiểm Tra Hạn Gold 💛</h2>
-    <p>Nhập link hoặc username Locket để xem thời hạn</p>
+    <h2>Nâng Cấp Locket Gold 💛</h2>
+    <p>Nhập link hoặc username Locket để kiểm tra hoặc kích hoạt Gold</p>
     
-    <input type="text" id="username" placeholder="Ví dụ: ngocquynh066" onkeydown="if(event.key==='Enter') checkGold()">
-    <button onclick="checkGold()" id="btnCheck">Kiểm tra hạn dùng</button>
+    <input type="text" id="username" placeholder="Ví dụ: ngocquynh066" onkeydown="if(event.key==='Enter') upgradeGold()">
+    
+    <div class="button-group">
+      <button onclick="checkGold()" id="btnCheck" class="btn-check">Kiểm tra</button>
+      <button onclick="upgradeGold()" id="btnUpgrade" class="btn-upgrade">Nâng cấp Gold</button>
+    </div>
     
     <div id="result"></div>
+    <div id="logBox" class="log-box"></div>
   </div>
 
   <script>
+    function setButtonsState(disabled) {
+      document.getElementById('btnCheck').disabled = disabled;
+      document.getElementById('btnUpgrade').disabled = disabled;
+    }
+
     async function checkGold() {
       const username = document.getElementById('username').value.trim();
       const resultDiv = document.getElementById('result');
-      const btn = document.getElementById('btnCheck');
+      const logBox = document.getElementById('logBox');
+      
       if (!username) return;
       
-      btn.disabled = true;
-      btn.innerText = "Đang kiểm tra...";
-      resultDiv.innerHTML = "<span class='info'>Đang phân giải UID và kiểm tra...</span>";
+      setButtonsState(true);
+      logBox.style.display = 'none';
+      resultDiv.innerHTML = "<span class='info'>Đang kiểm tra thông tin...</span>";
       
       try {
         const res = await fetch('/api-check', {
@@ -100,8 +144,44 @@
         resultDiv.innerHTML = `<span class='error'>⚠️ Lỗi kết nối server.</span>`;
       }
       
-      btn.disabled = false;
-      btn.innerText = "Kiểm tra hạn dùng";
+      setButtonsState(false);
+    }
+    
+    async function upgradeGold() {
+      const username = document.getElementById('username').value.trim();
+      const resultDiv = document.getElementById('result');
+      const logBox = document.getElementById('logBox');
+      
+      if (!username) return;
+      
+      setButtonsState(true);
+      resultDiv.innerHTML = "<span class='info'>Đang tiến hành kích hoạt Gold...</span>";
+      logBox.style.display = 'block';
+      logBox.innerHTML = 'Đang gửi yêu cầu...<br>';
+      
+      try {
+        const res = await fetch('/api/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+        });
+        const data = await res.json();
+        
+        if (data.logs && data.logs.length > 0) {
+          logBox.innerHTML = data.logs.join('<br>') + '<br>';
+          logBox.scrollTop = logBox.scrollHeight;
+        }
+        
+        if (data.success) {
+          resultDiv.innerHTML = `<span class='success'>✅ Nâng cấp thành công!<br>Hết hạn vào: <b>${data.expires}</b></span>`;
+        } else {
+          resultDiv.innerHTML = `<span class='error'>❌ Nâng cấp thất bại: ${data.message}</span>`;
+        }
+      } catch (e) {
+        resultDiv.innerHTML = `<span class='error'>⚠️ Lỗi kết nối server.</span>`;
+      }
+      
+      setButtonsState(false);
     }
   </script>
 </body>
